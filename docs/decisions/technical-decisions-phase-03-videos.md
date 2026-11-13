@@ -50,6 +50,8 @@ Dedicated PostgreSQL-based job queue library. Uses `SKIP LOCKED` for safe concur
 
 **Decision:** B (BullMQ + Redis)
 
+**Libraries:** bullmq, @nestjs/bullmq
+
 ---
 
 ## TD-02: Upload Strategy for Large Files (up to 10GB)
@@ -86,6 +88,17 @@ Standard Express/NestJS file upload: client sends the file as `multipart/form-da
 **Recommendation:** **Option A (Presigned URL — direct browser-to-storage)** — The API generates lightweight presigned URLs; the actual 10GB transfer goes directly from the client to MinIO/S3, leaving the NestJS process completely unloaded. For files >5GB, the API orchestrates the S3 multipart upload flow (generate upload ID + presigned URLs per part), and the client uploads parts in parallel directly to storage. This is the standard pattern used by YouTube, Vimeo, and every production video platform. Option B (tus) adds infrastructure complexity that is not justified when the storage already supports resumable multipart uploads natively. Option C is explicitly disqualified by the project requirements.
 
 **Decision:** A (Presigned URL — direct client-to-storage upload)
+
+**Revisions:**
+- 2026-11-13 — Presigned URLs handed to clients are signed against a separate public storage endpoint
+  (`S3_PUBLIC_ENDPOINT`, e.g. `http://localhost:9000` in local dev), while server-side S3 calls (API and
+  worker) use the internal Compose endpoint (`S3_ENDPOINT=http://minio:9000`). Tests that run inside the
+  `nestjs-api` container set `S3_PUBLIC_ENDPOINT` to the internal endpoint so they can reach the URLs.
+  Rationale: the S3 signature covers the host, so a URL signed for `minio:9000` is unusable outside the
+  Docker network; this is the only place a non-service host appears and it is never used for
+  container-to-container traffic (root `CLAUDE.md` → Docker Networking).
+- 2026-11-13 — The bucket CORS policy allows `PUT`/`GET`/`HEAD` from the client origin and exposes the
+  `ETag` response header. Rationale: the client must read each part's `ETag` to complete the multipart upload.
 
 ---
 
@@ -124,6 +137,8 @@ Lightweight, zero-dependency S3 client for JavaScript runtimes. ~78KB. Supports 
 
 **Decision:** A (AWS SDK v3 — client-s3 + s3-request-presigner)
 
+**Libraries:** @aws-sdk/client-s3, @aws-sdk/s3-request-presigner
+
 ---
 
 ## TD-04: Video Processing — Worker Architecture and FFmpeg Integration
@@ -161,6 +176,14 @@ Run the `@Processor()` in the API process for Phase 03 (where processing is ligh
 
 **Decision:** B (Separate worker container)
 
+**Revisions:**
+- 2026-11-13 — The thumbnail is the frame at 10% of the extracted duration (first frame when the duration
+  is unknown or under 1 second), saved as JPEG. Rationale: the opening frames of videos are often black or
+  title cards; validation flagged the frame-selection strategy as unspecified.
+- 2026-11-13 — The FFmpeg binaries (`ffmpeg`, `ffprobe`) are also installed in the `nestjs-api` image, not
+  only in the `video-worker` image. Rationale: every test runs inside the `nestjs-api` container
+  (`nestjs-project/CLAUDE.md` → Commands), and processor integration tests execute real FFmpeg.
+
 ---
 
 ## TD-05: Upload Protocol — Simple Presigned PUT vs. S3 Multipart Upload
@@ -197,6 +220,16 @@ Same as Option B but with cleaner API abstraction: the API always returns a unif
 **Recommendation:** **Option A (Multipart only)** — A single, universal code path eliminates branching and ensures 10GB support from day one. The multipart flow with parallel part uploads is strictly superior in throughput and resilience for any file over ~100MB, which is the typical video file range. The client-side complexity is bounded and well-documented (S3 multipart presigned is a standard pattern). Option B's dual path adds maintenance cost for a marginal simplicity win on small files that is rarely exercised (video files are typically >100MB).
 
 **Decision:** A (S3 Multipart Upload only)
+
+**Revisions:**
+- 2026-11-13 — Upload limits and contract: fixed part size of 100 MiB (last part may be smaller); maximum
+  file size of 10 GiB (10 × 1024³ bytes), validated at initiation against the declared size and again at
+  completion against the stored object size (`HeadObject` `ContentLength`); accepted content types
+  `video/mp4`, `video/webm`, `video/quicktime`, `video/x-matroska`. Part URLs expire after 1 hour and the
+  owner can request fresh URLs for specific part numbers while the video is `draft`; the owner can abort an
+  in-progress upload (`AbortMultipartUpload`). Rationale: the 10GB limit comes from the project plan, and the
+  S3 limits (5 MiB minimum part, 10,000 parts maximum) are satisfied with ~103 parts at 10 GiB; validation
+  found these parameters unspecified.
 
 ---
 
@@ -272,6 +305,17 @@ Hybrid: public and unlisted videos get presigned GET URLs (Option A). Private/re
 
 **Decision:** A (Direct-from-storage via presigned GET URL)
 
+**Revisions:**
+- 2026-11-13 — HTTP contract: `GET /videos/:publicId/stream` and `GET /videos/:publicId/download` respond
+  `302 Found` with `Location` set to a presigned GET URL; the download URL sets
+  `ResponseContentDisposition: attachment`. Presigned GET URLs expire after a configurable TTL (default
+  4 hours). Rationale: a redirect lets a `<video src>` or download link point at the API while the bytes
+  (including `Range` requests answered with `206 Partial Content`) flow directly from storage.
+- 2026-11-13 — Access rules: the owner of the video's channel can read metadata, stream and download in any
+  status; anyone else, including anonymous users, only when the status is `ready`. A non-owner request for a
+  video that is not `ready` returns 404 (existence is not disclosed). Rationale: anonymous viewing is a
+  platform rule (project overview; Phase 05), while visibility controls are Phase 04 scope.
+
 ---
 
 ## TD-08: Video Status Lifecycle and Failure Handling
@@ -309,6 +353,17 @@ Five states, splitting the queue-to-processing transition.
 
 **Decision:** B (draft → processing → ready | failed)
 
+**Revisions:**
+- 2026-11-13 — Failure policy: a processing job is attempted up to 3 times with exponential backoff
+  (initial delay 5 seconds); the job id is the video id so completing an upload twice cannot enqueue
+  duplicates. Only when the final attempt fails does the worker set the status to `failed` and store the
+  error message; intermediate failures keep the status `processing`. Rationale: validation found the retry
+  policy unspecified, and transient storage/FFmpeg errors should not fail a video on the first attempt.
+- 2026-11-13 — Automatic cleanup of stale drafts (the periodic TTL job mentioned in the recommendation) is
+  **out of scope** for Phase 03; abandoned multipart uploads can be aborted through the upload abort
+  operation (TD-05). Rationale: it is not a Phase 03 capability in `docs/project-plan.md` and would add a
+  scheduler dependency; it is recorded as a future task.
+
 ---
 
 ## TD-09: Storage Key Organization (Bucket and Object Key Structure)
@@ -345,6 +400,14 @@ One bucket, flat key structure without directory-like prefixes.
 **Recommendation:** **Option A (Single bucket, type-prefixed keys)** — Simplest infrastructure (one bucket) with clean logical grouping via prefix. `videos/{videoId}/` as a prefix enables listing and bulk-deleting all artifacts for a video. Phase 03 has no differentiated access policies between videos and thumbnails (both use presigned URLs), so separate buckets (Option B) add infrastructure cost without benefit. The prefix structure naturally extends for future artifacts (e.g., `videos/{videoId}/720p.mp4`, `videos/{videoId}/360p.mp4` for transcoded versions).
 
 **Decision:** A (Single bucket, type-prefixed keys)
+
+**Revisions:**
+- 2026-11-13 — The `{videoId}` segment in storage keys is the video's internal UUID primary key, not the
+  public 12-character identifier (TD-06). Rationale: storage layout stays independent of the public URL
+  identifier.
+- 2026-11-13 — The bucket (name from configuration) and its CORS policy (TD-02 revision) are created by a
+  one-shot `minio-init` service in `compose.yaml` (MinIO client) that runs after `minio` is healthy.
+  Rationale: `docker compose up` must yield a ready-to-use storage without manual steps.
 
 ---
 
