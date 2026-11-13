@@ -14,6 +14,8 @@ const MANAGED_TABLES = [
   'verification_tokens',
 ];
 
+const MANAGED_ENUM_TYPES = ['verification_tokens_type_enum'];
+
 describe('Database migrations (integration)', () => {
   let dataSource: DataSource;
 
@@ -37,13 +39,25 @@ describe('Database migrations (integration)', () => {
       ),
       dataSource.query(`DROP TABLE IF EXISTS "migrations" CASCADE`),
     ]);
+    // Enum types outlive DROP TABLE; leftovers from a prior migration:run
+    // would make CreateAuthTokens fail with "type already exists".
+    await Promise.all(
+      MANAGED_ENUM_TYPES.map((type) =>
+        dataSource.query(`DROP TYPE IF EXISTS "${type}" CASCADE`),
+      ),
+    );
   });
 
   afterAll(async () => {
     // The second test undoes the last migration, leaving token tables missing.
     // Re-apply so the shared DB is fully migrated when subsequent suites run.
-    await dataSource.runMigrations();
-    await dataSource.destroy();
+    // Always close the connection, otherwise a failing runMigrations leaves an
+    // open handle and Jest hangs instead of reporting the failure.
+    try {
+      await dataSource.runMigrations();
+    } finally {
+      await dataSource.destroy();
+    }
   });
 
   it('should apply all migrations and create all four tables', async () => {
