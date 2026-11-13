@@ -2,6 +2,7 @@
 import eslint from '@eslint/js';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
+import jestPlugin from 'eslint-plugin-jest';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -30,6 +31,16 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+    },
+  },
+  {
+    // Per typescript-eslint docs: in test files, replace unbound-method with
+    // the jest-aware variant, which allows `expect(mock.method)` references.
+    files: ['**/*.spec.ts', '**/*.integration-spec.ts', '**/*.e2e-spec.ts'],
+    plugins: { jest: jestPlugin },
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
+      'jest/unbound-method': 'error',
     },
   },
 );
