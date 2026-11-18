@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 3/9 completed
+**SIs:** 4/9 completed
 
 ### SI-03.1 — Dependências, infraestrutura (Redis, MinIO) e configuração
 - **Status:** done
@@ -19,9 +19,9 @@
 - **Observations:** StorageService with two S3Client instances (internal/public) and `onModuleDestroy` for cleanup. `import type { ConfigType }` required for `isolatedModules` + `emitDecoratorMetadata`. StorageModule registered in AppModule and exported for consumer modules.
 
 ### SI-03.4 — Lookup de canal, exceções de domínio e VideosService
-- **Status:** pending
-- **Tests:**
-- **Observations:**
+- **Status:** done
+- **Tests:** channels.service.integration-spec (+2 findByUserId), videos.service.spec (25 unit: initiateUpload 4, refreshPartUrls 3, completeUpload 5, abortUpload 1, findByPublicId 5, getStreamUrl 4, getDownloadUrl 3), videos.service.integration-spec (4: initiateUpload persists draft, compensation on insert failure, completeUpload enqueues job, abortUpload removes row), videos.module.spec (updated: added ConfigModule+storageConfig)
+- **Observations:** Added ChannelsService.findByUserId for ownership lookup (single responsibility). 6 domain exceptions created. VideosService with full upload lifecycle (initiate → refresh → complete/abort), public read (findByPublicId, getStreamUrl, getDownloadUrl), public_id retry with compensation pattern. BullMQ integration tests use queue prefix for isolation. PART_SIZE = 100 MiB.
 
 ### SI-03.5 — Endpoints de upload (VideosController)
 - **Status:** pending
