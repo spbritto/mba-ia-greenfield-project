@@ -1,0 +1,862 @@
+
+ ▐▛███▜▌   Claude Code v2.1.37
+▝▜█████▛▘  Opus 4.6 · Claude Pro
+  ▘▘ ▝▝    C:\dev\mba-ia-greenfield-project
+
+✻ Conversation compacted (ctrl+o for history)
+
+  ⎿  Referenced file docs\phases\phase-03-videos\phase-03-videos.md
+  ⎿  Read docs\phases\phase-03-videos\validation.md (48 lines)
+  ⎿  Referenced file docs\phases\phase-03-videos\context.md
+  ⎿  Read docs\phases\phase-03-videos\library-refs.md (356 lines)
+  ⎿  Referenced file docs\decisions\technical-decisions-phase-03-videos.md
+
+● I need to continue with Phase B of /plan-build 03. Gate 10 confirmed both
+  sentinelas present (case 2 — resume). Let me read the phase-b.md companion
+  file and the current state of the plan file.
+
+● Read 3 files (ctrl+o to expand)
+
+● Good — I have all three inputs loaded. This is a new-session resume so B1(a)
+  and B1(b) are both mandatory. I've completed both reads. Now I need to also
+  check the existing codebase structure for context on the nestjs-project
+  commands before proceeding with B2.
+
+  Let me also read the nestjs-project CLAUDE.md and check the package.json for
+  test commands needed for B6 Deliverables.
+
+● Recalled 1 memory, read 1 file (ctrl+o to expand)
+
+● Good. Now I have all inputs for Phase B. Let me proceed with B2: Decompose 
+  scope into Step Implementations.
+
+  Key facts from B1:
+  - Phase mode, NN=3, slug=phase-03-videos
+  - ui_in_scope: false — no UI SIs, no screen SIs, no bootstrap SIs
+  - All 9 TDs are Scope: Backend
+  - library_refs_required: true (TD-01 and TD-03 have libraries)
+  - Standard scaffold (Tech Specs rendered)
+  - Affected subproject: nestjs-project/
+  - Test commands: npm test (unit+integration), npm run test:e2e (e2e), npx tsc 
+  --noEmit (type-check), npm run build (build)
+
+  B2: SI decomposition (in memory):
+
+  Based on the capabilities, Tech Specs, and TD coverage:
+
+  1. SI-03.1 — Infra: Redis, MinIO e BullMQ no Docker Compose — Docker Compose 
+  services (redis, minio, minio-init), env vars, config files
+  (storage.config.ts, queue.config.ts), env validation schema update,
+  BullModule.forRoot() in AppModule
+    - TDs: TD-01, TD-03, TD-09 (revision: minio-init)
+    - 5 actions
+  2. SI-03.2 — Entidade Video e migração — Video entity, migration, TypeORM 
+  registration, public_id generation
+    - TDs: TD-06, TD-08
+    - 4 actions
+  3. SI-03.3 — StorageService (S3/MinIO client) — S3Client provider, presigned 
+  URL generation, multipart orchestration methods
+    - TDs: TD-02, TD-03, TD-05
+    - 4 actions
+  4. SI-03.4 — VideosService (orquestração de upload) — Upload initiation 
+  (create draft + multipart), part URL refresh, complete upload (complete
+  multipart + head + enqueue), abort upload
+    - TDs: TD-02, TD-05, TD-08, TD-01
+    - 5 actions
+  5. SI-03.5 — VideosController (endpoints de upload) — POST /videos, POST 
+  part-urls, POST complete, DELETE abort + DTOs + OpenAPI decorators + ownership
+   guard
+    - TDs: TD-02, TD-05
+    - 4 actions
+  6. SI-03.6 — VideosController (endpoints públicos) — GET /videos/:publicId, 
+  GET stream, GET download + optional auth guard extension
+    - TDs: TD-06, TD-07
+    - 4 actions
+  7. SI-03.7 — VideoProcessor (worker de processamento) — Processor with 
+  ffprobe/ffmpeg via child_process, thumbnail upload, status transitions,
+  failure handling, worker entrypoint
+    - TDs: TD-04, TD-08
+    - 5 actions
+  8. SI-03.8 — E2E: ciclo completo de upload e processamento — Full cycle e2e 
+  test: initiate → upload parts → complete → poll ready → stream 206 → download
+  attachment
+    - Covers all TDs end-to-end
+
+  Let me verify overflow: all SIs have ≤5 technical actions, ≤5 test files, and
+  expected ≤10 ACs each. No overflow detected.
+
+  B2.5: Library-refs coverage check.
+
+  Current-scope TDs with libraries:
+  - TD-01: bullmq, @nestjs/bullmq
+  - TD-03: @aws-sdk/client-s3, @aws-sdk/s3-request-presigner
+
+  SIs citing these: SI-03.1 (TD-01, TD-03), SI-03.3 (TD-03), SI-03.4 (TD-01). 
+  All 4 libraries need coverage in library-refs.md.
+
+  Let me verify all 4 are present in library-refs.md.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● All 4 libraries present. B2.5 passes.
+
+  B2.6: Bootstrap SI synthesis — skipped (ui_in_scope: false).
+
+  B3: Overflow detection — all 8 SIs checked in memory, all within caps. No
+  auto-split needed.
+
+  Now proceeding to B4: Append SIs one at a time. First SI replaces the
+  sentinela. For subsequent SIs, I'll anchor on ---\n\n## Technical 
+  Specifications (standard scaffold — Tech Specs rendered).
+
+  Let me read the bounded library-refs sections I need for the SIs that cite
+  current-scope TDs, then start writing.
+
+● Read 1 file (ctrl+o to expand)
+
+● Good — I have all library-refs in memory. Now I'll proceed with B4: appending
+  SIs one at a time. Starting with SI-03.1 which replaces the sentinela.
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 27 lines, removed 1 line
+      18                                                                 
+      19  ## Step Implementations                                        
+      20                                                                 
+      21 -<!-- SIs will be written in Phase B -->                        
+      21 +### SI-03.1 — Infra: Redis, MinIO e BullMQ no Docker Compose   
+      22                                                                 
+      23 +**Description:** Provisionar os serviços de infraestrutura     
+         +(Redis, MinIO, `minio-init`) no Docker Compose, criar os       
+         +arquivos de configuração NestJS (`storage.config.ts`,          
+         +`queue.config.ts`), registrar as variáveis de ambiente no      
+         +esquema Joi e integrar `BullModule.forRoot()` no `AppModule`.  
+      24 +                                                               
+      25 +**Technical actions:**                                         
+      26 +                                                               
+      27 +1. Adicionar serviços `redis`, `minio` e `minio-init` ao       
+         +`compose.yaml` — Redis com `appendonly yes` (per               
+         +`phase-03-videos/TD-01`); MinIO com healthcheck; `minio-init`  
+         +cria o bucket e configura CORS (`PUT`/`GET`/`HEAD`, expõe      
+         +`ETag`) após `minio` estar healthy (per                        
+         +`phase-03-videos/TD-09` revisão, `phase-03-videos/TD-02`       
+         +revisão). Instalar FFmpeg no image do `nestjs-api` e do        
+         +`video-worker` (per `phase-03-videos/TD-04` revisão).          
+      28 +2. Criar `src/config/storage.config.ts` —                      
+         +`registerAs('storage', ...)` com `S3_ENDPOINT`,                
+         +`S3_PUBLIC_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`,            
+         +`S3_SECRET_KEY`, `S3_REGION` (per `phase-03-videos/TD-03`,     
+         +`phase-03-videos/TD-02` revisão). Criar                        
+         +`src/config/queue.config.ts` — `registerAs('queue', ...)` com  
+         +`REDIS_HOST`, `REDIS_PORT` (per `phase-03-videos/TD-01`).      
+      29 +3. Atualizar `src/config/env.validation.ts` — adicionar as     
+         +variáveis de storage e Redis ao esquema Joi (per convenção     
+         +herdada phase-01/TD-02).                                       
+      30 +4. Registrar `BullModule.forRoot({ connection: { host, port }  
+         +})` no `AppModule` usando `queue.config.ts` (per               
+         +`phase-03-videos/TD-01`, `@nestjs/bullmq` —                    
+         +`BullModule.forRoot()`).                                       
+      31 +5. Atualizar `.env` e `.env.example` com os valores de storage 
+         + e Redis para o ambiente Docker local.                         
+      32 +                                                               
+      33 +**Tests:**                                                     
+      34 +                                                               
+      35 +| Artifact | Layer | Test file |                               
+      36 +|----------|-------|-----------|                               
+      37 +| `storage.config.ts` | Unit: module compila com env vars      
+         +válidas | `src/config/storage.config.spec.ts` |                
+      38 +| `queue.config.ts` | Unit: module compila com env vars        
+         +válidas | `src/config/queue.config.spec.ts` |                  
+      39 +                                                               
+      40 +**Dependencies:** none                                         
+      41 +                                                               
+      42 +**Acceptance criteria:**                                       
+      43 +                                                               
+      44 +- `docker compose up -d` inicia `redis`, `minio` e             
+         +`minio-init` sem erros; `minio-init` cria o bucket             
+         +configurado.                                                   
+      45 +- `BullModule.forRoot()` conecta ao Redis — `AppModule`        
+         +compila sem erros de DI.                                       
+      46 +- `S3Client` configurado com `forcePathStyle: true` e          
+         +`endpoint` interno consegue listar o bucket criado pelo        
+         +`minio-init`.                                                  
+      47 +- Env vars ausentes fazem o módulo falhar na inicialização     
+         +(validação Joi).                                               
+      48 +                                                               
+      49  ---                                                            
+      50                                                                 
+      51  ## Technical Specifications                                    
+
+● Now SI-03.2. Anchoring on ---\n\n## Technical Specifications.
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 32 lines
+      48                                                                 
+      49  ---                                                            
+      50                                                                 
+      51 +### SI-03.2 — Entidade Video e migração                        
+      52 +                                                               
+      53 +**Description:** Criar a entidade `Video` com todos os campos  
+         +do Data Model, a migração TypeORM correspondente, e registrar  
+         +`TypeOrmModule.forFeature([Video])` no `VideosModule`.         
+      54 +                                                               
+      55 +**Technical actions:**                                         
+      56 +                                                               
+      57 +1. Criar `src/videos/entities/video.entity.ts` — entidade      
+         +`Video` com todos os campos da tabela `videos` (per `### Data  
+         +Model`): `id` (uuid PK), `public_id` (varchar(12), unique),    
+         +`channel_id` (FK → `channels(id)`), `title`, `status` (enum    
+         +`draft`/`processing`/`ready`/`failed`, default `draft`),       
+         +`mime_type`, `size_in_bytes` (bigint com column transformer),  
+         +`storage_key`, `upload_id` (nullable), `duration_seconds`      
+         +(numeric(10,3) com column transformer), `metadata` (jsonb,     
+         +nullable), `thumbnail_key` (nullable), `error_message`         
+         +(nullable), `created_at`, `updated_at`. Relação `@ManyToOne(() 
+         + => Channel)` com `@JoinColumn({ name: 'channel_id' })`.       
+         +Indexes: unique em `public_id`, index em `channel_id`, index   
+         +em `status` (per `phase-03-videos/TD-06`,                      
+         +`phase-03-videos/TD-08`).                                      
+      58 +2. Criar função utilitária `generatePublicId()` em             
+         +`src/videos/utils/public-id.ts` —                              
+         +`randomBytes(9).toString('base64url')` via `node:crypto` (per  
+         +`phase-03-videos/TD-06`).                                      
+      59 +3. Gerar migração TypeORM para a tabela `videos` com todos os  
+         +campos, enum, indexes e FK.                                    
+      60 +4. Criar `src/videos/videos.module.ts` — `VideosModule` com    
+         +`TypeOrmModule.forFeature([Video])` e                          
+         +`BullModule.registerQueue({ name: 'video-processing' })` (per  
+         +`phase-03-videos/TD-01`, `@nestjs/bullmq` — `registerQueue`).  
+      61 +                                                               
+      62 +**Tests:**                                                     
+      63 +                                                               
+      64 +| Artifact | Layer | Test file |                               
+      65 +|----------|-------|-----------|                               
+      66 +| `Video` entity | Integration: constraints, defaults, unique  
+         +`public_id`, enum status, FK channel_id, column transformers   
+         +(bigint, numeric) |                                            
+         +`src/videos/entities/video.entity.integration-spec.ts` |       
+      67 +| `generatePublicId()` | Unit: formato base64url, comprimento  
+         +12 chars | `src/videos/utils/public-id.spec.ts` |              
+      68 +| `VideosModule` | Unit: compilação DI (TypeORM + BullMQ       
+         +wiring) | `src/videos/videos.module.spec.ts` |                 
+      69 +                                                               
+      70 +**Dependencies:** SI-03.1 — Redis e MinIO devem estar          
+         +configurados para `BullModule.registerQueue` funcionar         
+      71 +                                                               
+      72 +**Acceptance criteria:**                                       
+      73 +                                                               
+      74 +- Migração cria a tabela `videos` com todos os campos, enum    
+         +`videos_status_enum`, indexes e FK para `channels`.            
+      75 +- Inserir um `Video` com `public_id` duplicado viola a         
+         +constraint unique.                                             
+      76 +- `size_in_bytes` retorna `number` (não string) via column     
+         +transformer para valores até 10 GiB.                           
+      77 +- `duration_seconds` retorna `number` (não string) via column  
+         +transformer.                                                   
+      78 +- `status` default é `draft` quando não especificado.          
+      79 +- `generatePublicId()` retorna string de 12 chars do alfabeto  
+         +`[A-Za-z0-9_-]`.                                               
+      80 +                                                               
+      81 +---                                                            
+      82 +                                                               
+      83  ## Technical Specifications                                    
+      84                                                                 
+      85  > **Naming convention:** entity properties, columns and HTTP   
+          request/response fields use `snake_case`, matching the         
+          existing code (`Channel.user_id`, `created_at`;                
+          `RefreshTokenDto.refresh_token`,                               
+          `ResetPasswordDto.new_password`).                              
+
+● SI-03.3:
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 30 lines
+       80                                                                
+       81  ---                                                           
+       82                                                                
+       83 +### SI-03.3 — StorageService (client S3/MinIO)                
+       84 +                                                              
+       85 +**Description:** Criar o `StorageService` como wrapper do     
+          +`S3Client`, encapsulando as operações de object storage       
+          +usadas pelo upload e pelo worker: multipart upload (create,   
+          +presign parts, complete, abort), `HeadObject`, presigned GET  
+          +(streaming/download), e `PutObject` (thumbnail).              
+       86 +                                                              
+       87 +**Technical actions:**                                        
+       88 +                                                              
+       89 +1. Criar `src/storage/storage.module.ts` e                    
+          +`src/storage/storage.service.ts` — provider do `S3Client`     
+          +injetando `storage.config.ts` (per `phase-03-videos/TD-03`;   
+          +`@aws-sdk/client-s3` — `S3Client` com `forcePathStyle: true`, 
+          + `endpoint` do config). Expor `StorageService` para consumo   
+          +por `VideosModule`.                                           
+       90 +2. Implementar métodos de multipart upload:                   
+          +`createMultipartUpload(key, contentType)`,                    
+          +`generatePartUrls(key, uploadId, partNumbers,                 
+          +publicEndpoint)` usando `getSignedUrl` com                    
+          +`UploadPartCommand` (per `phase-03-videos/TD-02`,             
+          +`phase-03-videos/TD-05`; `@aws-sdk/s3-request-presigner` —    
+          +`getSignedUrl()`), `completeMultipartUpload(key, uploadId,    
+          +parts)`, `abortMultipartUpload(key, uploadId)` (per           
+          +`@aws-sdk/client-s3` — `CreateMultipartUploadCommand`,        
+          +`CompleteMultipartUploadCommand`,                             
+          +`AbortMultipartUploadCommand`).                               
+       91 +3. Implementar `headObject(key)` retornando `ContentLength`   
+          +(per `phase-03-videos/TD-05` revisão; `@aws-sdk/client-s3` —  
+          +`HeadObjectCommand`), `generatePresignedGetUrl(key, endpoint, 
+          + expiresIn, contentDisposition?)` para streaming e download   
+          +(per `phase-03-videos/TD-07`; `@aws-sdk/s3-request-presigner` 
+          + — `getSignedUrl()` com `GetObjectCommand`), e                
+          +`putObject(key, body, contentType)` para thumbnail (per       
+          +`@aws-sdk/client-s3` — `PutObjectCommand`).                   
+       92 +4. Implementar `deleteObject(key)` para cleanup em caso de    
+          +`SIZE_MISMATCH` (per `### API Contracts` → `POST              
+          +/videos/:videoId/upload/complete` behavior).                  
+       93 +                                                              
+       94 +**Tests:**                                                    
+       95 +                                                              
+       96 +| Artifact | Layer | Test file |                              
+       97 +|----------|-------|-----------|                              
+       98 +| `StorageService` | Integration: real MinIO — multipart flow 
+          + (create → presign → upload part → complete → head),          
+          +presigned GET URL acessível, put + get thumbnail, abort,      
+          +delete | `src/storage/storage.service.integration-spec.ts` |  
+       99 +                                                              
+      100 +**Dependencies:** SI-03.1 — MinIO deve estar configurado no   
+          +Compose                                                       
+      101 +                                                              
+      102 +**Acceptance criteria:**                                      
+      103 +                                                              
+      104 +- `createMultipartUpload` retorna um `UploadId` válido para   
+          +uma key no bucket configurado.                                
+      105 +- `generatePartUrls` retorna URLs presigned que aceitam `PUT` 
+          + de um part body.                                             
+      106 +- `completeMultipartUpload` finaliza o upload; `headObject`   
+          +retorna o `ContentLength` correto.                            
+      107 +- `abortMultipartUpload` invalida o upload em andamento.      
+      108 +- `generatePresignedGetUrl` retorna URL acessível com `GET`   
+          +que serve o conteúdo do objeto.                               
+      109 +- `putObject` armazena o objeto e `headObject` confirma a     
+          +existência.                                                   
+      110 +                                                              
+      111 +---                                                           
+      112 +                                                              
+      113  ## Technical Specifications                                   
+      114                                                                
+      115  > **Naming convention:** entity properties, columns and HTTP  
+           request/response fields use `snake_case`, matching the        
+           existing code (`Channel.user_id`, `created_at`;               
+           `RefreshTokenDto.refresh_token`,                              
+           `ResetPasswordDto.new_password`).                             
+
+● SI-03.4:
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 32 lines
+      110                                                                
+      111  ---                                                           
+      112                                                                
+      113 +### SI-03.4 — VideosService (orquestração de upload)          
+      114 +                                                              
+      115 +**Description:** Implementar a lógica de negócio do upload:   
+          +iniciar upload (criar draft + multipart), renovar URLs de     
+          +parts, completar upload (complete multipart + head + validar  
+          +size + enqueue job), abortar upload — com as transições de    
+          +status do Data Model e as regras de ownership.                
+      116 +                                                              
+      117 +**Technical actions:**                                        
+      118 +                                                              
+      119 +1. Criar `src/videos/videos.service.ts` — `VideosService` com 
+          + injeção de `Repository<Video>`, `StorageService`,            
+          +`@InjectQueue('video-processing') queue: Queue`,              
+          +`ChannelsService` (do `ChannelsModule`, para lookup de        
+          +ownership), e `storage.config` (per `phase-03-videos/TD-01`,  
+          +`phase-03-videos/TD-02`, `phase-03-videos/TD-05`).            
+      120 +2. Implementar `initiateUpload(userId, dto)` — lookup do      
+          +channel do user via `ChannelsService`, criar `Video` em       
+          +`draft` com `public_id` (retry on unique violation), calcular 
+          + `total_parts` = `ceil(size_in_bytes / PART_SIZE)`, chamar    
+          +`storageService.createMultipartUpload()`, gerar presigned     
+          +part URLs via `storageService.generatePartUrls()` assinadas   
+          +contra `S3_PUBLIC_ENDPOINT`, salvar `upload_id` no Video (per 
+          + `### API Contracts` → `POST /videos`).                       
+      121 +3. Implementar `refreshPartUrls(userId, videoId,              
+          +partNumbers)` — validar ownership, validar status `draft`,    
+          +gerar novas presigned URLs (per `### API Contracts` → `POST   
+          +/videos/:videoId/upload/part-urls`). Implementar              
+          +`completeUpload(userId, videoId, parts)` — validar ownership  
+          ++ status `draft`, chamar `completeMultipartUpload`, verificar 
+          + `headObject.ContentLength` vs `size_in_bytes` (se divergir:  
+          +`deleteObject` + deletar Video row → `SIZE_MISMATCH`), setar  
+          +`upload_id = null`, `status = processing`, enqueue            
+          +`process-video` job com `jobId = video_id`, `attempts: 3`,    
+          +`backoff: { type: 'exponential', delay: 5000 }`,              
+          +`removeOnComplete: true` **após commit** (per `### API        
+          +Contracts` → `POST /videos/:videoId/upload/complete`, `###    
+          +Events/Messages`; `bullmq` — job options).                    
+      122 +4. Implementar `abortUpload(userId, videoId)` — validar       
+          +ownership + status `draft`, chamar `abortMultipartUpload`,    
+          +deletar Video row (per `### API Contracts` → `DELETE          
+          +/videos/:videoId/upload`).                                    
+      123 +5. Implementar `findByPublicId(publicId, userId?)` — retornar 
+          + Video; se não `ready` e caller não é owner →                 
+          +`VideoNotFoundException` (per `### API Contracts` → `GET      
+          +/videos/:publicId`, `### Authorization Matrix`). Implementar  
+          +`getStreamUrl(publicId, userId?)` e `getDownloadUrl(publicId, 
+          + userId?)` — validar acesso por status + ownership, gerar     
+          +presigned GET URL contra `S3_PUBLIC_ENDPOINT` (per `### API   
+          +Contracts` → `GET stream`, `GET download`;                    
+          +`phase-03-videos/TD-07`).                                     
+      124 +                                                              
+      125 +**Tests:**                                                    
+      126 +                                                              
+      127 +| Artifact | Layer | Test file |                              
+      128 +|----------|-------|-----------|                              
+      129 +| `VideosService` | Unit: branch logic — initiateUpload       
+          +(happy path, unique violation retry), completeUpload (happy,  
+          +size mismatch, upload incomplete), abortUpload,               
+          +findByPublicId (owner vs non-owner vs anonymous em cada       
+          +status), getStreamUrl/getDownloadUrl (draft owner → 409) |    
+          +`src/videos/videos.service.spec.ts` |                         
+      130 +| `VideosService` + queue | Integration: real DB + real Redis 
+          + — job enqueued com dados corretos após completeUpload |      
+          +`src/videos/videos.service.integration-spec.ts` |             
+      131 +                                                              
+      132 +**Dependencies:** SI-03.2 — entidade Video; SI-03.3 —         
+          +StorageService                                                
+      133 +                                                              
+      134 +**Acceptance criteria:**                                      
+      135 +                                                              
+      136 +- `initiateUpload` cria Video em `draft` com `public_id` de   
+          +12 chars, retorna `upload_id` e `part_urls`.                  
+      137 +- `completeUpload` com parts corretos transiciona status para 
+          + `processing` e enfileira job `process-video` com `video_id`  
+          +e `storage_key`.                                              
+      138 +- `completeUpload` com `ContentLength` divergente deleta o    
+          +objeto e o Video, retornando `SIZE_MISMATCH`.                 
+      139 +- `abortUpload` aborta o multipart e remove o Video do banco. 
+      140 +- `findByPublicId` para vídeo não-`ready` retorna             
+          +`VideoNotFoundException` quando caller não é owner.           
+      141 +- `getStreamUrl` e `getDownloadUrl` para vídeo `draft` pelo   
+          +owner retorna `VideoNotUploadedException`.                    
+      142 +                                                              
+      143 +---                                                           
+      144 +                                                              
+      145  ## Technical Specifications                                   
+      146                                                                
+      147  > **Naming convention:** entity properties, columns and HTTP  
+           request/response fields use `snake_case`, matching the        
+           existing code (`Channel.user_id`, `created_at`;               
+           `RefreshTokenDto.refresh_token`,                              
+           `ResetPasswordDto.new_password`).                             
+
+● SI-03.5:
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 34 lines
+      142                                                                
+      143  ---                                                           
+      144                                                                
+      145 +### SI-03.5 — VideosController (endpoints de upload)          
+      146 +                                                              
+      147 +**Route:** POST /videos                                       
+      148 +**Route:** POST /videos/:videoId/upload/part-urls             
+      149 +**Route:** POST /videos/:videoId/upload/complete              
+      150 +**Route:** DELETE /videos/:videoId/upload                     
+      151 +**Test Specs:** _pending /plan-test-specs_                    
+      152 +**Authorization:** JwtAuthGuard (todos requerem token válido) 
+      153 +                                                              
+      154 +**Description:** Criar o `VideosController` com os 4          
+          +endpoints de upload autenticados, DTOs com `class-validator`, 
+          + decorators OpenAPI, e `ParseUUIDPipe` no `:videoId`.         
+      155 +                                                              
+      156 +**Technical actions:**                                        
+      157 +                                                              
+      158 +1. Criar DTOs: `InitiateUploadDto` (`file_name`, `mime_type`, 
+          + `size_in_bytes` com validators per `### API Contracts` →     
+          +Validation Rules), `RefreshPartUrlsDto` (`part_numbers`),     
+          +`CompleteUploadDto` (`parts: { part_number, etag }[]`) — com  
+          +`class-validator` decorators (per `phase-02-auth/TD-06`).     
+      159 +2. Criar `src/videos/videos.controller.ts` —                  
+          +`@Controller('videos')`, `@ApiTags('Videos')`. Endpoint `POST 
+          + /videos` → `videosService.initiateUpload()`, resposta 201    
+          +(per `### API Contracts` → `POST /videos`). Endpoints `POST   
+          +/videos/:videoId/upload/part-urls` e `POST                    
+          +/videos/:videoId/upload/complete` com `@Param('videoId',      
+          +ParseUUIDPipe)` (per `### API Contracts`).                    
+      160 +3. Endpoint `DELETE /videos/:videoId/upload` →                
+          +`videosService.abortUpload()`, resposta 204 `@HttpCode(204)`  
+          +(per `### API Contracts` → `DELETE /videos/:videoId/upload`). 
+      161 +4. Adicionar decorators OpenAPI em todos os endpoints:        
+          +`@ApiOperation()`, `@ApiResponse()` para cada status code     
+          +documentado no Error Catalog (per                             
+          +`openapi-docs-nestjs/TD-01`).                                 
+      162 +                                                              
+      163 +**Tests:** _(empty — controller wiring E2E covered by         
+          +SI-03.8; DTO validation tested inline)_                       
+      164 +                                                              
+      165 +**Dependencies:** SI-03.4 — VideosService deve existir        
+      166 +                                                              
+      167 +**Acceptance criteria:**                                      
+      168 +                                                              
+      169 +- `POST /videos` com payload válido retorna `201` com `id`,   
+          +`public_id`, `status: "draft"`, `upload_id`, `part_size`,     
+          +`total_parts`, `part_urls`.                                   
+      170 +- `POST /videos` com `mime_type` inválido retorna `400` com   
+          +`errorCode: "VALIDATION_ERROR"`.                              
+      171 +- `POST /videos` com `size_in_bytes` > 10 GiB retorna `400`   
+          +com `errorCode: "VALIDATION_ERROR"`.                          
+      172 +- `POST /videos` sem token retorna `401`.                     
+      173 +- `POST /videos/:videoId/upload/complete` com parts corretos  
+          +retorna `200` com `status: "processing"`.                     
+      174 +- `DELETE /videos/:videoId/upload` para draft do owner        
+          +retorna `204`.                                                
+      175 +- `POST /videos/:videoId/upload/part-urls` por non-owner      
+          +retorna `403` com `errorCode: "VIDEO_ACCESS_DENIED"`.         
+      176 +                                                              
+      177 +---                                                           
+      178 +                                                              
+      179  ## Technical Specifications                                   
+      180                                                                
+      181  > **Naming convention:** entity properties, columns and HTTP  
+           request/response fields use `snake_case`, matching the        
+           existing code (`Channel.user_id`, `created_at`;               
+           `RefreshTokenDto.refresh_token`,                              
+           `ResetPasswordDto.new_password`).                             
+
+● SI-03.6:
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 37 lines
+      176                                                                
+      177  ---                                                           
+      178                                                                
+      179 +### SI-03.6 — VideosController (endpoints públicos) e         
+          +optional auth                                                 
+      180 +                                                              
+      181 +**Route:** GET /videos/:publicId                              
+      182 +**Route:** GET /videos/:publicId/stream                       
+      183 +**Route:** GET /videos/:publicId/download                     
+      184 +**Test Specs:** _pending /plan-test-specs_                    
+      185 +**Authorization:** Optional — anônimo ou autenticado (ver     
+          +Authorization Matrix)                                         
+      186 +                                                              
+      187 +**Description:** Adicionar os 3 endpoints de leitura pública  
+          +ao `VideosController` com autenticação opcional (reconhece    
+          +owner sem exigir token) e redirecionamento 302 para           
+          +streaming/download.                                           
+      188 +                                                              
+      189 +**Technical actions:**                                        
+      190 +                                                              
+      191 +1. Estender o `JwtAuthGuard` global com suporte a **optional  
+          +auth** — em rotas marcadas (custom decorator, e.g.            
+          +`@OptionalAuth()`), ausência de header `Authorization` →      
+          +`request.user = undefined` (anônimo); token válido →          
+          +`request.user` populado; token inválido/expirado → 401 (per   
+          +`### Authorization Matrix` → optional authentication).        
+      192 +2. Implementar `GET /videos/:publicId` — validação do param   
+          +`:publicId` (12 chars `[A-Za-z0-9_-]`, custom pipe ou regex), 
+          + `@OptionalAuth()`, retorna Video com `thumbnail_url`         
+          +(presigned GET se `thumbnail_key` set), `error_message`       
+          +somente para owner (per `### API Contracts` → `GET            
+          +/videos/:publicId`).                                          
+      193 +3. Implementar `GET /videos/:publicId/stream` —               
+          +`@OptionalAuth()`, `@Redirect()` 302 com `Location` =         
+          +presigned GET URL para `storage_key` (per `### API Contracts` 
+          + → `GET /videos/:publicId/stream`; `phase-03-videos/TD-07`).  
+          +Implementar `GET /videos/:publicId/download` — 302 com        
+          +`ResponseContentDisposition: attachment;                      
+          +filename="{public_id}.{ext}"` (per `### API Contracts` → `GET 
+          + /videos/:publicId/download`).                                
+      194 +4. Adicionar decorators OpenAPI em todos os endpoints (per    
+          +`openapi-docs-nestjs/TD-01`).                                 
+      195 +                                                              
+      196 +**Tests:**                                                    
+      197 +                                                              
+      198 +| Artifact | Layer | Test file |                              
+      199 +|----------|-------|-----------|                              
+      200 +| `OptionalAuth` guard extension | Unit: ausência de header → 
+          + anônimo, token válido → user, token inválido → 401 |         
+          +`src/common/guards/optional-auth.spec.ts` |                   
+      201 +                                                              
+      202 +**Dependencies:** SI-03.4 — VideosService com                 
+          +`findByPublicId`, `getStreamUrl`, `getDownloadUrl`            
+      203 +                                                              
+      204 +**Acceptance criteria:**                                      
+      205 +                                                              
+      206 +- `GET /videos/:publicId` para vídeo `ready` sem token        
+          +retorna `200` com dados do vídeo (sem `error_message`).       
+      207 +- `GET /videos/:publicId` para vídeo `ready` com token do     
+          +owner retorna `200` com `error_message` (se houver).          
+      208 +- `GET /videos/:publicId` para vídeo `draft` por anônimo      
+          +retorna `404` com `errorCode: "VIDEO_NOT_FOUND"`.             
+      209 +- `GET /videos/:publicId` com token inválido retorna `401`.   
+      210 +- `GET /videos/:publicId/stream` para vídeo `ready` retorna   
+          +`302` com header `Location` apontando para presigned URL.     
+      211 +- `GET /videos/:publicId/download` para vídeo `ready` retorna 
+          + `302` com presigned URL contendo                             
+          +`ResponseContentDisposition: attachment`.                     
+      212 +- `GET /videos/:publicId/stream` pelo owner para vídeo        
+          +`draft` retorna `409` com `errorCode: "VIDEO_NOT_UPLOADED"`.  
+      213 +                                                              
+      214 +---                                                           
+      215 +                                                              
+      216  ## Technical Specifications                                   
+      217                                                                
+      218  > **Naming convention:** entity properties, columns and HTTP  
+           request/response fields use `snake_case`, matching the        
+           existing code (`Channel.user_id`, `created_at`;               
+           `RefreshTokenDto.refresh_token`,                              
+           `ResetPasswordDto.new_password`).                             
+
+● SI-03.7:
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 32 lines
+      213                                                                
+      214  ---                                                           
+      215                                                                
+      216 +### SI-03.7 — VideoProcessor (worker de processamento)        
+      217 +                                                              
+      218 +**Description:** Implementar o `VideoProcessor`               
+          +(`@Processor('video-processing')`) com extração de metadados  
+          +via `ffprobe`, geração de thumbnail via `ffmpeg`, upload do   
+          +thumbnail ao MinIO, atualização de status para                
+          +`ready`/`failed`, e o entrypoint dedicado do `video-worker`   
+          +no Docker Compose.                                            
+      219 +                                                              
+      220 +**Technical actions:**                                        
+      221 +                                                              
+      222 +1. Criar `src/videos/processors/video.processor.ts` —         
+          +`@Processor('video-processing')` com método `process(job)`:   
+          +carregar Video, skip se status ≠ `processing` (idempotência), 
+          + gerar presigned GET URL contra `S3_ENDPOINT` interno (per    
+          +`### Events/Messages` step 2; `phase-03-videos/TD-02`         
+          +revisão, `phase-03-videos/TD-04`).                            
+      223 +2. Implementar extração de metadados — `spawn('ffprobe',      
+          +['-v', 'error', '-print_format', 'json', '-show_format',      
+          +'-show_streams', url])`, parsear JSON: `duration_seconds` de  
+          +`format.duration`, `metadata` = `{ width, height,             
+          +video_codec, audio_codec, bit_rate, format_name }` dos        
+          +streams e format (per `### Events/Messages` step 3;           
+          +`phase-03-videos/TD-04`).                                     
+      224 +3. Implementar geração de thumbnail — calcular time =         
+          +`duration_seconds × 0.1` (0 se duration < 1s),                
+          +`spawn('ffmpeg', ['-v', 'error', '-ss', time, '-i', url,      
+          +'-frames:v', '1', '-f', 'image2pipe', '-c:v', 'mjpeg',        
+          +'pipe:1'])`, coletar stdout como Buffer JPEG,                 
+          +`storageService.putObject('videos/{id}/thumbnail.jpg',        
+          +buffer, 'image/jpeg')` (per `### Events/Messages` steps 4-6;  
+          +`phase-03-videos/TD-04` revisão, `phase-03-videos/TD-09`).    
+      225 +4. Atualizar Video: `duration_seconds`, `metadata`,           
+          +`thumbnail_key`, `status = ready`. Na falha final             
+          +(`attemptsMade >= job.opts.attempts`): `status = failed`,     
+          +`error_message` = mensagem do erro (per `### Events/Messages` 
+          + steps 7-8; `phase-03-videos/TD-08` revisão).                 
+      226 +5. Criar entrypoint do `video-worker` — `src/worker.ts` que   
+          +bootstraps um NestJS application context (sem HTTP server)    
+          +registrando `VideoProcessor`, `StorageService`,               
+          +`TypeOrmModule`, `BullModule`, `ConfigModule`. Adicionar      
+          +serviço `video-worker` ao `compose.yaml` com mesma imagem     
+          +(FFmpeg incluso) e entrypoint diferente (per                  
+          +`phase-03-videos/TD-04`).                                     
+      227 +                                                              
+      228 +**Tests:**                                                    
+      229 +                                                              
+      230 +| Artifact | Layer | Test file |                              
+      231 +|----------|-------|-----------|                              
+      232 +| `VideoProcessor` | Unit: mock spawn — happy path (extrai    
+          +duration, metadata, gera thumbnail, status → ready), failure  
+          +path (status → failed com error_message), skip quando status  
+          +≠ processing |                                                
+          +`src/videos/processors/video.processor.spec.ts` |             
+      233 +| `VideoProcessor` | Integration: real FFmpeg + real MinIO +  
+          +real DB — video fixture pequeno (~1s), assert duration        
+          +extraída, thumbnail criado no MinIO, status `ready` |         
+          +`src/videos/processors/video.processor.integration-spec.ts` | 
+      234 +                                                              
+      235 +**Dependencies:** SI-03.2 — entidade Video; SI-03.3 —         
+          +StorageService; SI-03.1 — Redis + MinIO + Compose             
+      236 +                                                              
+      237 +**Acceptance criteria:**                                      
+      238 +                                                              
+      239 +- Worker processa vídeo de teste: `duration_seconds` extraído 
+          + corresponde ao valor real do fixture.                        
+      240 +- `metadata` contém `width`, `height`, `video_codec`          
+          +extraídos corretamente do stream.                             
+      241 +- Thumbnail JPEG armazenado em `videos/{id}/thumbnail.jpg` no 
+          + MinIO; `HeadObject` confirma `ContentType: image/jpeg`.      
+      242 +- Após processamento bem-sucedido, `status = ready` e         
+          +`thumbnail_key` preenchido.                                   
+      243 +- Após falha na última tentativa, `status = failed` e         
+          +`error_message` preenchido.                                   
+      244 +- Job para vídeo com status ≠ `processing` termina sem        
+          +alterações (idempotência).                                    
+      245 +                                                              
+      246 +---                                                           
+      247 +                                                              
+      248  ## Technical Specifications                                   
+      249                                                                
+      250  > **Naming convention:** entity properties, columns and HTTP  
+           request/response fields use `snake_case`, matching the        
+           existing code (`Channel.user_id`, `created_at`;               
+           `RefreshTokenDto.refresh_token`,                              
+           `ResetPasswordDto.new_password`).                             
+
+● SI-03.8 (final SI — E2E):
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 29 lines
+      245                                                                
+      246  ---                                                           
+      247                                                                
+      248 +### SI-03.8 — E2E: ciclo completo de upload e processamento   
+      249 +                                                              
+      250 +**Test Specs:** _pending /plan-test-specs_                    
+      251 +**Description:** Teste end-to-end cobrindo o ciclo completo:  
+          +iniciar upload → upload de parts via presigned URLs →         
+          +completar upload → worker processa → streaming com `Range` →  
+          +download com attachment — exercitando real MinIO, real Redis, 
+          + real FFmpeg e real PostgreSQL conforme requerido pelo        
+          +`objetivo_desafio.md`.                                        
+      252 +                                                              
+      253 +**Technical actions:**                                        
+      254 +                                                              
+      255 +1. Criar `test/videos.e2e-spec.ts` — E2E suite cobrindo o     
+          +fluxo completo: autenticar → `POST /videos` (draft) → upload  
+          +parts ao MinIO via presigned URLs → `POST                     
+          +/videos/:videoId/upload/complete` (processing) → aguardar     
+          +worker processar (poll `GET /videos/:publicId` até `ready`) → 
+          + `GET /videos/:publicId` (metadados + thumbnail_url) → `GET   
+          +/videos/:publicId/stream` (302 → presigned URL, `Range` →     
+          +`206 Partial Content`) → `GET /videos/:publicId/download`     
+          +(302 → presigned URL com attachment disposition) (per `###    
+          +API Contracts`, `### Events/Messages`, `### Authorization     
+          +Matrix`).                                                     
+      256 +2. Adicionar cenários de erro: upload sem token (401),        
+          +part-urls por non-owner (403), complete com parts errados     
+          +(`UPLOAD_INCOMPLETE`), complete com size divergente           
+          +(`SIZE_MISMATCH`), abort de draft (204), acesso anônimo a     
+          +vídeo não-ready (404), stream de draft pelo owner (409        
+          +`VIDEO_NOT_UPLOADED`) (per `### Error Catalog`).              
+      257 +3. Adicionar cenários de autenticação opcional: `GET          
+          +/videos/:publicId` anônimo para vídeo `ready` (200), com      
+          +token inválido (401), owner vê `error_message` (per `###      
+          +Authorization Matrix` → optional authentication).             
+      258 +                                                              
+      259 +**Tests:**                                                    
+      260 +                                                              
+      261 +| Artifact | Layer | Test file |                              
+      262 +|----------|-------|-----------|                              
+      263 +| Upload + processing cycle | E2E: full HTTP cycle com        
+          +supertest + real infra | `test/videos.e2e-spec.ts` |          
+      264 +                                                              
+      265 +**Dependencies:** SI-03.5 — endpoints de upload; SI-03.6 —    
+          +endpoints públicos; SI-03.7 — worker de processamento         
+      266 +                                                              
+      267 +**Acceptance criteria:**                                      
+      268 +                                                              
+      269 +- Ciclo completo (upload → processing → ready → stream →      
+          +download) executa com sucesso contra infraestrutura real      
+          +(MinIO, Redis, PostgreSQL, FFmpeg).                           
+      270 +- `GET /videos/:publicId/stream` redireciona para URL que     
+          +responde `206 Partial Content` com header `Range`.            
+      271 +- `GET /videos/:publicId/download` redireciona para URL com   
+          +`Content-Disposition: attachment`.                            
+      272 +- Cenários de erro retornam os códigos HTTP e `errorCode`s    
+          +documentados no Error Catalog.                                
+      273 +- Autenticação opcional funciona: anônimo acessa vídeo        
+          +`ready`, token inválido recebe 401.                           
+      274 +                                                              
+      275 +---                                                           
+      276 +                                                              
+      277  ## Technical Specifications                                   
+      278                                                                
+      279  > **Naming convention:** entity properties, columns and HTTP  
+           request/response fields use `snake_case`, matching the        
+           existing code (`Channel.user_id`, `created_at`;               
+           `RefreshTokenDto.refresh_token`,                              
+           `ResetPasswordDto.new_password`).                             
+
+● All 8 SIs appended. Now B5: Build Dependency Map. Let me grep for SI headers
+  and Dependencies lines.
+
+● Searched for 2 patterns (ctrl+o to expand)
+
+● Now I'll build the dependency map and edit the sentinela:
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 8 lines, removed 1 line
+      542                                                                
+      543  ## Dependency Map                                             
+      544                                                                
+      545 -<!-- Dep Map will be written in Phase B -->                   
+      545 +SI-03.1 (root — infra: Redis, MinIO, BullMQ, Compose)         
+      546 +├── SI-03.2 — depends on SI-03.1 (BullModule.registerQueue    
+          +requer Redis)                                                 
+      547 +│   ├── SI-03.4 — depends on SI-03.2 + SI-03.3 (service       
+          +consume entity + storage)                                     
+      548 +│   │   ├── SI-03.5 — depends on SI-03.4 (controller delega   
+          +ao service)                                                   
+      549 +│   │   └── SI-03.6 — depends on SI-03.4 (controller delega   
+          +ao service)                                                   
+      550 +│   └── SI-03.7 — depends on SI-03.1 + SI-03.2 + SI-03.3      
+          +(worker consume entity + storage + Redis)                     
+      551 +├── SI-03.3 — depends on SI-03.1 (StorageService requer       
+          +MinIO)                                                        
+      552 +└── SI-03.8 — depends on SI-03.5 + SI-03.6 + SI-03.7 (E2E     
+          +exercita todos os endpoints + worker)                         
+      553                                                                
+      554  ---                                                           
+      555                                                                
+
+● Now B6: Build Deliverables — replace the sentinela:
+
+● Update(docs\phases\phase-03-videos\phase-03-videos.md)
+  ⎿  Added 15 lines, removed 1 line
+      555                                                                
+      556  ## Deliverables                                               
+      557                                                                
+      558 -<!-- Deliverables will be written in Phase B -->              
+      558 +- [ ] SI-03.1 — Infra: Redis, MinIO e BullMQ no Docker        
+          +Compose                                                       
+      559 +- [ ] SI-03.2 — Entidade Video e migração                     
+      560 +- [ ] SI-03.3 — StorageService (client S3/MinIO)              
+      561 +- [ ] SI-03.4 — VideosService (orquestração de upload)        
+      562 +- [ ] SI-03.5 — VideosController (endpoints de upload)        
+      563 +- [ ] SI-03.6 — VideosController (endpoints públicos) e       
+          +optional auth                                                 
+      564 +- [ ] SI-03.7 — VideoProcessor (worker de processamento)      
+      565 +- [ ] SI-03.8 — E2E: ciclo completo de upload e processamento 
+      566 +                                                              
+      567 +**Full test suites:**                                         
+      568 +                                                              
+      569 +- [ ] Backend tests pass (`cd nestjs-project && docker        
+          +compose exec nestjs-api npm test -- --runInBand`)             
+      570 +- [ ] E2E tests pass (`cd nestjs-project && docker compose    
+          +exec nestjs-api npm run test:e2e`)                            
+      571 +- [ ] Type/compilation checks pass (`cd nestjs-project &&     
+          +docker compose exec nestjs-api npx tsc --noEmit`)             
+      572 +- [ ] Lint passes (`cd nestjs-project && docker compose exec  
+          +nestjs-api npm run lint`)                                     
+
+● B7: Emit completion message.
+
+  ---
+  Successful completion (Phase B7)
+
+  Plan artifact: docs/phases/phase-03-videos/phase-03-videos.md
+
+  8 SIs written:
+  - SI-03.1 — Infra: Redis, MinIO e BullMQ no Docker Compose
+  - SI-03.2 — Entidade Video e migração
+  - SI-03.3 — StorageService (client S3/MinIO)
+  - SI-03.4 — VideosService (orquestração de upload)
+  - SI-03.5 — VideosController (endpoints de upload)
+  - SI-03.6 — VideosController (endpoints públicos) e optional auth
+  - SI-03.7 — VideoProcessor (worker de processamento)
+  - SI-03.8 — E2E: ciclo completo de upload e processamento
+
+  Dependency Map and Deliverables appended. 3 SIs carry **Test Specs:** _pending
+   /plan-test-specs_ (SI-03.5, SI-03.6, SI-03.8).
+
+✻ Cogitated for 5m 57s

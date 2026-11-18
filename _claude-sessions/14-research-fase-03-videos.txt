@@ -1,0 +1,334 @@
+
+ ▐▛███▜▌   Claude Code v2.1.37
+▝▜█████▛▘  Opus 4.6 · Claude Pro
+  ▘▘ ▝▝    C:\dev\mba-ia-greenfield-project
+
+❯ /research 03 
+
+● I'll start by gathering the necessary context for Phase 03 research. Let me
+  read the project plan, existing decisions, and understand the current state.
+
+● plan-reader(Read Phase 03 from project plan)
+  ⎿  Done (11 tool uses · 9.1k tokens · 41s)
+
+● Explore(Explore existing decisions docs)
+  ⎿  Done (3 tool uses · 18.0k tokens · 9s)
+
+● Read 1 file (ctrl+o to expand)
+
+● Now let me read the existing decisions documents to understand what's already
+  been decided, and the project plan's Phase 03 section in detail.
+
+● Read 3 files (ctrl+o to expand)
+
+● Good, I have the Phase 01 and Phase 02 decisions. Now let me read the other
+  decisions docs and the backend's package.json for installed versions.
+
+● Read 3 files (ctrl+o to expand)
+  ⎿  Loaded nestjs-project\CLAUDE.md
+
+● Now let me check the Docker compose file and the architecture diagram to
+  understand the current infrastructure, and read the remaining decisions docs.
+
+● Searched for 1 pattern, read 5 files (ctrl+o to expand)
+
+● Good, I have a comprehensive picture of the prior decisions. Let me now find
+  the compose file and look at what already exists for video/storage/queue
+  infrastructure.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Explore(Find video/storage/queue code)
+  ⎿  Done (31 tool uses · 60.6k tokens · 1m 28s)
+
+● Now let me read the compose file and the objetivo_desafio.md for additional
+  context, then start researching the technical options.
+
+● Read 2 files (ctrl+o to expand)
+
+● Now let me research the key libraries via Context7 to get accurate, up-to-date
+   documentation for the options I'll be evaluating.
+
+● context7 - resolve-library-id (MCP)(libraryName: "BullMQ", query: "job queue
+                                     NestJS integration background processing")
+  ⎿  Available Libraries:
+
+     - Title: NestJS Bull
+     … +45 lines (ctrl+o to expand)
+
+● context7 - resolve-library-id (MCP)(libraryName: "@nestjs/bull", query:
+                                     "NestJS bull queue integration job
+                                     processing")
+  ⎿  Available Libraries:
+
+     - Title: NestJS Bull
+     … +43 lines (ctrl+o to expand)
+
+● context7 - resolve-library-id (MCP)(libraryName: "AWS SDK S3 client", query:
+                                     "S3 presigned URL multipart upload MinIO
+                                     compatible")
+  ⎿  Available Libraries:
+
+     - Title: Remotefs Aws S3
+     … +43 lines (ctrl+o to expand)
+
+● context7 - resolve-library-id (MCP)(libraryName: "NestJS", query: "file upload
+                                      streaming queues bull integration")
+  ⎿  Available Libraries:
+
+     - Title: NestJS
+     … +45 lines (ctrl+o to expand)
+
+● context7 - query-docs (MCP)(libraryId: "/nestjs/bull", query: "BullMQ
+                             integration NestJS 11 queue processor job events
+                             setup module registration", language: "TypeScript")
+  ⎿  ### BullRegistrar class implementation
+
+     Source: https://github.com/nestjs/bull
+     … +190 lines (ctrl+o to expand)
+
+● context7 - query-docs (MCP)(libraryId:
+                             "/nestjs/docs.nestjs.com/__branch__11.0.0", query:
+                             "file upload streaming multipart large files
+                             presigned URLs queues background processing",
+                             language: "TypeScript")
+  ⎿ ### Define a job handler with @Process decorator
+
+    Source: https://github.com/nestjs/docs.nestjs.com/blob/11.0.0/content/t
+    … +154 lines (ctrl+o to expand)
+
+
+● context7 - query-docs (MCP)(libraryId: "/websites/aws_amazon_s3", query:
+                             "presigned URL multipart upload large files Node.js
+                              JavaScript SDK S3 MinIO compatible", language:
+                             "TypeScript")
+  ⎿ ### Create presigned URLs for S3 upload with JavaScript
+
+    Source: https://docs.aws.amazon.com/AmazonS3/latest/developerguide/s3_e
+    … +335 lines (ctrl+o to expand)
+
+
+● Now let me research the @aws-sdk/client-s3 specifically for Node.js, and also
+  look at alternatives like pgboss for Postgres-based queues.
+
+● context7 - resolve-library-id (MCP)(libraryName: "@aws-sdk/client-s3", query:
+                                     "presigned URL upload download Node.js
+                                     TypeScript S3 MinIO")
+  ⎿  Available Libraries:
+
+     - Title: S3 Lite Client
+     … +44 lines (ctrl+o to expand)
+
+● context7 - resolve-library-id (MCP)(libraryName: "pgboss", query: "PostgreSQL
+                                     job queue Node.js background processing
+                                     without Redis")
+  ⎿  Available Libraries:
+
+     - Title: PgBoss
+     … +17 lines (ctrl+o to expand)
+
+● Let me get more specific documentation on pgboss and BullMQ to properly
+  compare them, and also research the S3 presigned multipart upload approach.
+
+● context7 - query-docs (MCP)(libraryId: "/timgit/pg-boss", query: "job queue
+                             setup configuration Node.js background processing
+                             retry failed jobs events completion", language:
+                             "TypeScript")
+  ⎿  ### QueueOptions – retry and durability configuration
+
+     Source: https://github.com/timgit/pg-boss/blob/master/src/types.ts
+     … +309 lines (ctrl+o to expand)
+
+● context7 - query-docs (MCP)(libraryId: "/taskforcesh/bullmq", query: "queue
+                             worker job processing events retry failed jobs
+                             NestJS integration setup", language: "TypeScript")
+  ⎿ ### NestJS Integration
+
+    Source: https://github.com/taskforcesh/bullmq/blob/master/docs/gitbook/
+    … +232 lines (ctrl+o to expand)
+
+
+● Good. Now let me also research the tus upload protocol and fluent-ffmpeg for
+  the processing decisions.
+
+● context7 - resolve-library-id (MCP)(libraryName: "fluent-ffmpeg", query:
+                                     "video processing metadata extraction
+                                     thumbnail generation Node.js")
+  ⎿  Available Libraries:
+
+     - Title: Fluent FFmpeg
+     … +43 lines (ctrl+o to expand)
+
+● Web Search("tus resumable upload protocol Node.js S3 MinIO integration 2026")
+  ⎿  Did 1 search in 6s
+
+● context7 - query-docs (MCP)(libraryId: "/fluent-ffmpeg/node-fluent-ffmpeg",
+                             query: "extract video metadata duration screenshot
+                             thumbnail generation ffprobe", language:
+                             "TypeScript")
+  ⎿ ### Generate thumbnails with screenshots() using count and timestamps
+
+    Source: https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/blob/master
+    … +187 lines (ctrl+o to expand)
+
+
+● Web Search("BullMQ vs pgboss comparison PostgreSQL queue Redis queue Node.js
+            2026 tradeoffs")
+  ⎿  Did 1 search in 9s
+
+● This is very interesting — BullMQ 6 now supports PostgreSQL. Let me verify
+  this and get more details.
+
+● Web Search("BullMQ 6 PostgreSQL backend "@nestjs/bullmq" compatibility NestJS
+            2026")
+  ⎿  Did 1 search in 7s
+
+● Web Search("S3 presigned URL multipart upload vs tus protocol comparison large
+             files 10GB 2026")
+  ⎿  Did 1 search in 7s
+
+● Now I have comprehensive research data. Let me also quickly check the NestJS
+  11 docs for the BullMQ PostgreSQL backend integration pattern, and then verify
+   what version of @nestjs/bullmq supports the backendFactory.
+
+● Web Search(""@nestjs/bullmq" backendFactory version "createPostgresBackend"
+            package.json npm")
+  ⎿  Did 1 search in 5s
+
+● Web Search("nanoid CUID2 UUID short unique ID URL-safe video identifier
+            comparison 2026")
+  ⎿  Did 1 search in 7s
+
+● I now have all the research I need. Let me write the comprehensive technical
+  decisions document. This is a significant document, so let me compose it
+  carefully.
+
+● Write(docs\decisions\technical-decisions-phase-03-videos.md)
+  ⎿  Wrote 1 lines to docs\decisions\technical-decisions-phase-03-videos.md
+     ---
+     scope_type: phase
+     related_phases: [3]
+     status: pending
+     date: 2026-11-12
+     scope_description: "Technical decisions for video upload, background 
+     processing, object storage integration, streaming/download, unique URL 
+     generation, and video status lifecycle — the core engineering 
+     challenges of Phase 03."
+     ---
+
+     # Technical Decisions — Phase 03: Upload e Processamento de Vídeos
+
+
+
+● Now let me run the coverage check — I need to verify every Phase 03 capability
+   maps to at least one TD.
+
+  Let me verify the capability mapping:
+
+  1. "Serviço de armazenamento de arquivos (vídeos e thumbnails)" → TD-03 (S3
+  Client Library) + TD-09 (Storage Key Organization)
+  2. "Serviço de processamento em segundo plano (filas)" → TD-01 (Job Queue
+  Technology)
+  3. "Upload de vídeos com suporte a arquivos de até 10GB sem impacto na 
+  performance" → TD-02 (Upload Strategy) + TD-05 (Upload Protocol)
+  4. "Pré-cadastro automático do vídeo como rascunho ao iniciar o upload" → 
+  TD-08 (Video Status Lifecycle)
+  5. "Processamento automático do vídeo após upload (extração de duração e 
+  metadados)" → TD-04 (Worker Architecture) + TD-08 (Video Status Lifecycle)
+  6. "Geração automática de thumbnail a partir de um frame do vídeo" → TD-04 
+  (Worker Architecture)
+  7. "URL única por vídeo, sem conflito com outros vídeos" → TD-06 (Unique Video
+   URL Identifier)
+  8. "Reprodução via streaming (sem necessidade de download completo)" → TD-07 
+  (Streaming Strategy)
+  9. "Download do vídeo pelo usuário" → Covered by TD-07 (same presigned GET URL
+   mechanism; download is a variant of streaming with Content-Disposition:
+  attachment). No separate TD needed — this is an implementation detail of the
+  same presigned URL approach.
+
+  All 9 capabilities are covered. Subproject coverage check: nestjs-project/ has
+   all 9 TDs. next-frontend/ has an explicit justification ("no open decision —
+  backend-only deliverable").
+
+  Let me also verify the (d)+(a) test — are any TDs actually best-practices
+  resolutions that should be dropped?
+
+  - TD-01 (Queue technology): No skill resolves "which queue technology."
+  Cross-component (compose + API + config). Keep.
+  - TD-02 (Upload strategy): No skill resolves "10GB upload architecture."
+  Cross-component. Keep.
+  - TD-03 (S3 client library): No skill covers S3 client choice. Keep.
+  - TD-04 (Worker architecture): No skill resolves "in-process vs separate
+  container." Cross-component (compose + API). Keep.
+  - TD-05 (PUT vs multipart): Follows from TD-02 but is a distinct choice with
+  real alternatives. Keep.
+  - TD-06 (URL identifier): No skill resolves ID generation strategy.
+  Cross-component (DB schema + API contract). Keep.
+  - TD-07 (Streaming strategy): No skill resolves "proxy vs direct."
+  Cross-component (API + storage + frontend). Keep.
+  - TD-08 (Status lifecycle): Cross-component (DB enum + API contract + queue
+  events). Keep.
+  - TD-09 (Storage keys): Cross-component (storage config + API code + worker
+  code). Keep.
+
+  All TDs pass the (d)+(a) test.
+
+● The technical decisions document for Phase 03 has been written to
+  docs/decisions/technical-decisions-phase-03-videos.md. Here's a summary of the
+   9 TDs:
+  TD: TD-01
+  Decision: Job Queue Technology
+  Recommendation: BullMQ 6 + PostgreSQL backend — no Redis needed; reuses
+    existing PostgreSQL via createPostgresBackend; first-class
+    @nestjs/bullmq integration
+  ────────────────────────────────────────
+  TD: TD-02
+  Decision: Upload Strategy (10GB)
+  Recommendation: Presigned URL — direct browser-to-storage — API generates
+    presigned URLs, file goes directly to MinIO/S3, NestJS never
+    touches the bytes
+  ────────────────────────────────────────
+  TD: TD-03
+  Decision: S3 Client Library
+  Recommendation: AWS SDK v3 (@aws-sdk/client-s3 + s3-request-presigner +
+    lib-storage) — canonical S3 client, MinIO compatible, full
+    multipart support
+  ────────────────────────────────────────
+  TD: TD-04
+  Decision: Worker Architecture
+  Recommendation: Hybrid — in-process @Processor() for Phase 03 (metadata +
+    thumbnail is lightweight); portable to a separate container
+    later
+  ────────────────────────────────────────
+  TD: TD-05
+  Decision: Upload Protocol
+  Recommendation: S3 Multipart Upload only — single code path for all file
+  sizes,
+     parallel parts, per-part retry
+  ────────────────────────────────────────
+  TD: TD-06
+  Decision: Unique Video URL ID
+  Recommendation: NanoID (21 chars, URL-safe, 126 bits entropy) — short,
+    shareable, YouTube-like
+  ────────────────────────────────────────
+  TD: TD-07
+  Decision: Streaming Strategy
+  Recommendation: Direct-from-storage via presigned GET URL — S3/MinIO handle
+    Range requests natively, zero API load
+  ────────────────────────────────────────
+  TD: TD-08
+  Decision: Video Status Lifecycle
+  Recommendation: **Simplified: `draft → processing → ready
+  ────────────────────────────────────────
+  TD: TD-09
+  Decision: Storage Key Organization
+  Recommendation: Single bucket, type-prefixed keys —
+    videos/{videoId}/original.{ext} and
+    videos/{videoId}/thumbnail.jpg
+  All 9 Phase 03 capabilities are covered by at least one TD. The frontend has
+  an explicit justification (backend-only deliverable per scope).
+
+  Next step: Review the decisions, fill in the Choice fields, then run
+  /plan-context 03 to consolidate the context for the planning pipeline.
+
+✻ Sautéed for 8m 37s
