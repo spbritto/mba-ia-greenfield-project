@@ -4,7 +4,7 @@ name: phase-03-videos
 test_specs_aware: true
 sources_mtime:
   docs/phases/phase-03-videos/context.md: "2026-11-17T22:58:36"
-  docs/phases/phase-03-videos/library-refs.md: "2026-11-17T22:58:21"
+  docs/phases/phase-03-videos/library-refs.md: "2026-11-17T23:23:06"
   docs/decisions/technical-decisions-phase-03-videos.md: "2026-11-13T12:26:58"
 ---
 
@@ -18,7 +18,278 @@ Entregar upload funcional de vídeos de até 10GB via presigned multipart upload
 
 ## Step Implementations
 
-<!-- SIs will be written in Phase B -->
+### SI-03.1 — Dependências, infraestrutura (Redis, MinIO) e configuração
+
+**Description:** Instalar as bibliotecas fixadas em `library-refs.md`, provisionar `redis`, `minio` e `minio-init` no Compose, instalar FFmpeg na imagem, criar as configs `storage`/`queue` com validação Joi, registrar o BullMQ no `AppModule` e preparar o ambiente de testes para alcançar as URLs pré-assinadas dentro do container.
+
+**Technical actions:**
+
+1. Instalar no container `nestjs-api`: `bullmq@^6.7.7`, `@nestjs/bullmq@^11.0.5` (linha compatível com NestJS 11; peer `bullmq ^6`), `@aws-sdk/client-s3@^3.1171.0`, `@aws-sdk/s3-request-presigner@^3.1171.0` (per `library-refs.md`; `phase-03-videos/TD-01`, `phase-03-videos/TD-03`).
+2. `Dockerfile.dev`: instalar `ffmpeg` (fornece `ffmpeg` e `ffprobe`) via `apt` — a mesma imagem serve `nestjs-api` e `video-worker` (per `phase-03-videos/TD-04` + revisão).
+3. `compose.yaml`: adicionar `redis` (`redis-server --appendonly yes`, healthcheck `redis-cli ping`) (per `phase-03-videos/TD-01`); `minio` (porta 9000 API / 9001 console, healthcheck); `minio-init` (imagem do MinIO client, roda uma vez após `minio` healthy) que cria o bucket de `S3_BUCKET` (per `phase-03-videos/TD-09` revisão). Configurar CORS conforme a documentação do MinIO (consultar via context7: configuração por bucket ou `MINIO_API_CORS_ALLOW_ORIGIN`) permitindo `PUT`/`GET`/`HEAD` e expondo `ETag` (per `phase-03-videos/TD-02` revisão). `nestjs-api` passa a depender de `redis` (healthy) e `minio-init` (concluído).
+4. Criar `src/config/storage.config.ts` — `registerAs('storage')` com `S3_ENDPOINT` (interno, `http://minio:9000`), `S3_PUBLIC_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_PRESIGNED_GET_TTL_SECONDS` (default 14400 = 4 h) (per `phase-03-videos/TD-02` revisão, `phase-03-videos/TD-07` revisão). Criar `src/config/queue.config.ts` — `registerAs('queue')` com `REDIS_HOST` (default `redis`, nunca `localhost`) e `REDIS_PORT` (per `phase-03-videos/TD-01`).
+5. `src/config/env.validation.ts`: adicionar as novas variáveis ao schema Joi (convenção herdada `phase-01-configuracao-base/TD-02`). Atualizar `.env.example` (e o `.env` local): `S3_PUBLIC_ENDPOINT=http://localhost:9000` para clientes no host; demais hosts = nomes de serviço do Compose.
+6. Registrar `BullModule.forRootAsync` no `AppModule` injetando `queue.config` (per `@nestjs/bullmq` — `BullModule.forRoot`).
+7. Ambiente de testes: adicionar um setup de Jest (unit/integration e e2e) que carrega o `.env` e sobrescreve `S3_PUBLIC_ENDPOINT` com `S3_ENDPOINT`, porque os testes rodam dentro do container `nestjs-api` e precisam alcançar as URLs pré-assinadas (per `phase-03-videos/TD-02` revisão).
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| `storage.config.ts` | Unit: factory lê as variáveis e aplica o default do TTL | `src/config/storage.config.spec.ts` |
+| `queue.config.ts` | Unit: factory lê host/porta e aplica o default `redis` | `src/config/queue.config.spec.ts` |
+| `env.validation.ts` | Integration: schema rejeita ausência das novas variáveis obrigatórias | `src/config/env.validation.integration-spec.ts` (estender) |
+
+**Dependencies:** none
+
+**Acceptance criteria:**
+
+- `docker compose up -d` sobe `redis` e `minio` healthy e `minio-init` termina com sucesso, criando o bucket.
+- `docker compose exec nestjs-api ffprobe -version` e `ffmpeg -version` funcionam.
+- `AppModule` compila com o `BullModule` conectado ao `redis`.
+- A suíte existente (Fases 01–02) continua verde.
+
+---
+
+### SI-03.2 — Entidade Video, migração e módulo
+
+**Description:** Criar a entidade `Video`, o gerador de `public_id`, a migração `CreateVideos`, o `VideosModule` registrado no `AppModule`, e ajustar os helpers e testes existentes que conhecem o schema completo.
+
+**Technical actions:**
+
+1. Criar `src/videos/entities/video.entity.ts` conforme `### Data Model` (snake_case, enum `videos_status_enum`, transformers de `bigint`/`numeric` → `number`, `jsonb` para `metadata`, `@ManyToOne(() => Channel)` + `@JoinColumn({ name: 'channel_id' })`, índices) (per `phase-03-videos/TD-06`, `phase-03-videos/TD-08`, `phase-03-videos/TD-09`).
+2. Criar `src/videos/utils/public-id.ts` — `generatePublicId()` = `randomBytes(9).toString('base64url')` (per `phase-03-videos/TD-06`).
+3. Gerar a migração via CLI (`npm run migration:generate`) → `src/database/migrations/<timestamp>-CreateVideos.ts`; rodar contra o banco limpo (`.claude/rules/typeorm-migrations.md`).
+4. Criar `src/videos/videos.module.ts` com `TypeOrmModule.forFeature([Video])` e `BullModule.registerQueue({ name: 'video-processing' })`; importar `VideosModule` no `AppModule`. Constantes de fila/job (`video-processing`, `process-video`) em `src/videos/videos.constants.ts` (`nestjs-common-conventions.md`).
+5. Atualizar `src/test/create-test-data-source.ts` → `cleanAllTables` apaga `videos` antes de `channels` (FK), para não quebrar as suítes das Fases 01–02.
+6. Atualizar `src/database/migrations.integration-spec.ts`: incluir `CreateVideos` na lista de migrações, `videos` em `MANAGED_TABLES` e `videos_status_enum` em `MANAGED_ENUM_TYPES`; esperar 3 migrações; o teste de revert passa a verificar a remoção de `videos`.
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| `Video` entity | Integration: default `draft`, unique `public_id`, FK `channel_id`, transformers retornam `number`, `metadata` jsonb | `src/videos/entities/video.entity.integration-spec.ts` |
+| `generatePublicId()` | Unit: 12 caracteres do alfabeto `[A-Za-z0-9_-]` | `src/videos/utils/public-id.spec.ts` |
+| `VideosModule` | Unit: compilação do módulo (TypeORM + fila) | `src/videos/videos.module.spec.ts` |
+| Migrações | Integration: aplica 3 migrações, cria `videos`, revert remove `videos` | `src/database/migrations.integration-spec.ts` (atualizar) |
+
+**Dependencies:** SI-03.1
+
+**Acceptance criteria:**
+
+- A migração cria `videos` com enum, índices e FK para `channels`; o revert remove tabela e enum.
+- `public_id` duplicado viola a constraint única.
+- `size_in_bytes` e `duration_seconds` voltam como `number`.
+- A suíte completa existente continua verde com o novo `cleanAllTables`.
+
+---
+
+### SI-03.3 — StorageModule (cliente S3/MinIO)
+
+**Description:** Encapsular o acesso ao object storage em `StorageService`, com um cliente para operações internas (endpoint `S3_ENDPOINT`) e assinatura de URLs para clientes externos (endpoint `S3_PUBLIC_ENDPOINT`).
+
+**Technical actions:**
+
+1. Criar `src/storage/storage.module.ts` e `src/storage/storage.service.ts` (exporta `StorageService`); dois `S3Client` configurados a partir de `storage.config` com `forcePathStyle: true`: interno (`S3_ENDPOINT`) para comandos e URLs usadas pelo worker; público (`S3_PUBLIC_ENDPOINT`) apenas para assinar URLs entregues a clientes (per `phase-03-videos/TD-02` revisão, `phase-03-videos/TD-03`; `library-refs.md` → `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`).
+2. Métodos de multipart: `createMultipartUpload(key, contentType)`, `presignUploadParts(key, uploadId, partNumbers)` (URLs públicas, 1 h), `completeMultipartUpload(key, uploadId, parts)`, `abortMultipartUpload(key, uploadId)` (per `phase-03-videos/TD-05` + revisão).
+3. `getObjectSize(key)` (`HeadObject` → `ContentLength`), `putObject(key, body, contentType)`, `deleteObject(key)`.
+4. `presignClientGet(key, { downloadFileName? })` — URL pública com TTL `S3_PRESIGNED_GET_TTL_SECONDS` e, quando `downloadFileName` vier, `ResponseContentDisposition: attachment; filename="…"`; `presignInternalGet(key)` — URL assinada no endpoint interno, para o FFmpeg do worker (per `phase-03-videos/TD-07` revisão, `phase-03-videos/TD-04`).
+5. Importar `StorageModule` no `AppModule` (e no worker, SI-03.7).
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| `StorageService` | Integration (MinIO real): multipart com 2 partes de 5 MiB via URLs pré-assinadas (PUT com `fetch`, captura do `ETag`) → complete → `getObjectSize`; GET pré-assinado com `Range` → 206; download com `Content-Disposition: attachment`; put/delete; abort | `src/storage/storage.service.integration-spec.ts` |
+
+**Dependencies:** SI-03.1
+
+**Acceptance criteria:**
+
+- O fluxo multipart completo funciona contra o MinIO real, inclusive a leitura do `ETag` das respostas.
+- A URL de stream responde `206 Partial Content` a uma requisição com `Range`.
+- A URL de download responde com `Content-Disposition: attachment`.
+
+---
+
+### SI-03.4 — Lookup de canal, exceções de domínio e VideosService
+
+**Description:** Implementar a regra de negócio de upload e leitura (`VideosService`), com ownership resolvido via `ChannelsModule` e erros como exceções de domínio.
+
+**Technical actions:**
+
+1. `ChannelsService.findByUserId(userId): Promise<Channel | null>` — o lookup de canal pertence ao `ChannelsModule` (princípio de responsabilidade única do `CLAUDE.md`); `VideosModule` importa `ChannelsModule`.
+2. Criar `src/videos/exceptions/video.exceptions.ts` estendendo `DomainException`: `VideoNotFoundException` (404 `VIDEO_NOT_FOUND`), `VideoAccessDeniedException` (403 `VIDEO_ACCESS_DENIED`), `VideoNotInDraftException` (409 `VIDEO_NOT_IN_DRAFT`), `VideoNotUploadedException` (409 `VIDEO_NOT_UPLOADED`), `UploadIncompleteException` (400 `UPLOAD_INCOMPLETE`), `SizeMismatchException` (400 `SIZE_MISMATCH`) (per `### Error Catalog`; `phase-02-auth/TD-07`).
+3. `initiateUpload(userId, dto)`: gera `id` (`randomUUID`) e `storage_key` = `videos/{id}/original.{ext}`; `createMultipartUpload`; insere o `Video` (`draft`, `title` derivado de `file_name`) com retry de `public_id` em violação de unicidade; se a inserção falhar de vez, compensa com `abortMultipartUpload` e relança; responde com `part_urls` de todas as partes (per `### API Contracts` → `POST /videos`; `phase-03-videos/TD-05` revisão).
+4. `refreshPartUrls`, `completeUpload`, `abortUpload` conforme os comportamentos de `### API Contracts` (ownership → 403; não-`draft` → 409; `UPLOAD_INCOMPLETE`; `SIZE_MISMATCH` apaga objeto + linha). Em `completeUpload`, o status `processing` é persistido antes de enfileirar `process-video` com as opções de `### Events/Messages`; se o enfileiramento falhar, o vídeo vai para `failed` com `error_message` e o erro é relançado (`nestjs-services.md` — nunca engolir erros).
+5. `findByPublicId(publicId, userId?)`, `getStreamUrl(...)`, `getDownloadUrl(...)` aplicando a `### Authorization Matrix` (não-owner e não-`ready` → 404; owner com `draft` → 409 em stream/download); `thumbnail_url` via `presignClientGet`; `error_message` só para o owner.
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| `ChannelsService.findByUserId` | Integration: retorna o canal do usuário / `null` | `src/channels/channels.service.integration-spec.ts` (estender) |
+| `VideosService` | Unit: ramos de ownership, status, `UPLOAD_INCOMPLETE`, `SIZE_MISMATCH`, retry de `public_id`, matriz de acesso por status | `src/videos/videos.service.spec.ts` |
+| `VideosService` | Integration (DB + MinIO + Redis reais): initiate persiste o draft; complete enfileira o job (`queue.getJob(videoId)` com `video_id`/`storage_key`); compensação do initiate (`jest.spyOn` na inserção → `abortMultipartUpload` executado); abort remove a linha | `src/videos/videos.service.integration-spec.ts` |
+
+Para não competir com o `video-worker` em execução, a fila dos testes de integração usa um `prefix` próprio do BullMQ.
+
+**Dependencies:** SI-03.2, SI-03.3
+
+**Acceptance criteria:**
+
+- Todas as transições e erros de `### API Contracts` são cobertos por teste.
+- `completeUpload` duas vezes no mesmo vídeo → 409 no segundo (o `jobId` = `video_id` também impede job duplicado).
+- Nenhuma consulta direta à tabela `channels` dentro de `VideosModule`.
+
+---
+
+### SI-03.5 — Endpoints de upload (VideosController)
+
+**Route:** POST /videos
+**Route:** POST /videos/:videoId/upload/part-urls
+**Route:** POST /videos/:videoId/upload/complete
+**Route:** DELETE /videos/:videoId/upload
+**Test Specs:** _pending /plan-test-specs_
+**Authorization:** JwtAuthGuard global (todas exigem token válido)
+
+**Description:** Expor o fluxo de upload via HTTP com DTOs validados, OpenAPI e sem o rate limit dos endpoints de autenticação.
+
+**Technical actions:**
+
+1. DTOs em `src/videos/dto/`: `InitiateUploadDto`, `RefreshPartUrlsDto`, `CompleteUploadDto` (+ DTOs de resposta para OpenAPI) com as regras de `### API Contracts` → Validation Rules (`phase-02-auth/TD-06`).
+2. `src/videos/videos.controller.ts`: `@ApiTags('videos')` + `@Controller('videos')` (`nestjs-controllers.md`); `POST /videos` (201), `POST /videos/:videoId/upload/part-urls` (200), `POST /videos/:videoId/upload/complete` (200), `DELETE /videos/:videoId/upload` (204, `@HttpCode(204)`); `ParseUUIDPipe` em `:videoId`; `userId` do token.
+3. `@SkipThrottle()` no controller: o `ThrottlerGuard` global (10 req/min) é a proteção de autenticação da Fase 02 (`phase-02-auth/TD-08`), e o fluxo de upload/polling legítimo excede esse limite.
+4. Decorators OpenAPI (`@ApiOperation`, `@ApiBearerAuth`, `@ApiResponse` para cada status do `### Error Catalog`) (per `openapi-docs-nestjs/TD-01` + revisão).
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| Endpoints de upload + DTOs | E2E: 201 do initiate e validações 400; 401 sem token; PUT da parte na URL pré-assinada; complete 200 → `processing` no banco; complete repetido → 409; `UPLOAD_INCOMPLETE`; `SIZE_MISMATCH` (tamanho declarado ≠ enviado) com linha removida; part-urls 200 e 403 para não-owner; abort 204 com linha removida | `test/videos.e2e-spec.ts` |
+
+**Dependencies:** SI-03.4
+
+**Acceptance criteria:**
+
+- Respostas e erros batem com `### API Contracts` (corpo de erro `{ statusCode, error, message }`, ex.: `error: "VALIDATION_ERROR"`).
+- A API nunca recebe os bytes do vídeo: as partes vão direto ao MinIO.
+
+---
+
+### SI-03.6 — Autenticação opcional e endpoints públicos (metadados, stream, download)
+
+**Route:** GET /videos/:publicId
+**Route:** GET /videos/:publicId/stream
+**Route:** GET /videos/:publicId/download
+**Test Specs:** _pending /plan-test-specs_
+**Authorization:** Opcional — anônimo ou autenticado (`### Authorization Matrix`)
+
+**Description:** Permitir leitura anônima de vídeos `ready` reconhecendo o owner quando há token, e entregar stream/download por redirecionamento 302.
+
+**Technical actions:**
+
+1. `src/auth/decorators/optional-auth.decorator.ts` (`@OptionalAuth()`) e extensão do `JwtAuthGuard` global: em rotas marcadas, sem header → anônimo; token válido → `request.user`; token inválido/expirado → 401 (per `### Authorization Matrix` → optional authentication). O guard continua global (`nestjs-controllers.md`).
+2. Validação de `:publicId` (12 caracteres `[A-Za-z0-9_-]`) por pipe.
+3. `GET /videos/:publicId` (200), `GET /videos/:publicId/stream` e `/download` (302 com `Location` vindo do service) com `@OptionalAuth()` (per `phase-03-videos/TD-07` + revisões).
+4. Decorators OpenAPI, incluindo o 302 e os 409/404.
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| `JwtAuthGuard` + `@OptionalAuth()` | Unit: sem header → anônimo; token válido → user; token inválido → 401; rotas não marcadas inalteradas | `src/auth/guards/jwt-auth.guard.spec.ts` (estender) |
+| Endpoints públicos | E2E: anônimo em `draft` → 404; owner em `draft` → 200 e stream 409; token inválido → 401; vídeo `ready` (objeto enviado e status ajustado no arrange) → 200 sem `error_message`, stream 302 cujo `Location` responde 206 a `Range`, download 302 com `attachment` | `test/videos.e2e-spec.ts` (estender) |
+
+**Dependencies:** SI-03.4 (SI-03.5 para o arquivo e2e)
+
+**Acceptance criteria:**
+
+- Matriz de acesso cumprida em todos os status.
+- Streaming comprovado por teste: `206 Partial Content` a partir da URL redirecionada.
+
+---
+
+### SI-03.7 — Worker de processamento (FFmpeg) e serviço `video-worker`
+
+**Description:** Processar os jobs em um container dedicado: extrair duração e metadados, gerar o thumbnail e atualizar o status.
+
+**Technical actions:**
+
+1. `src/videos/ffmpeg/ffmpeg.service.ts` — `probe(url)` e `extractFrame(url, seconds)` via `spawn` de `ffprobe`/`ffmpeg` com os argumentos de `### Events/Messages` (per `phase-03-videos/TD-04`; `fluent-ffmpeg` não é usado). Erros de exit code ≠ 0 viram exceção com o stderr.
+2. `src/videos/processors/video.processor.ts` — `@Processor('video-processing')` (`WorkerHost`): ignora se o vídeo não existe ou não está `processing`; executa os passos 2–7 de `### Events/Messages` usando `presignInternalGet`; na falha da última tentativa marca `failed` com `error_message` e relança; nas intermediárias apenas relança (per `phase-03-videos/TD-08` revisão).
+3. `src/worker/worker.module.ts` (Config + validação, TypeORM, `BullModule.forRootAsync`, `registerQueue`, `StorageModule`, `TypeOrmModule.forFeature([Video])`, `FfmpegService`, `VideoProcessor`) e `src/worker.ts` com `NestFactory.createApplicationContext(WorkerModule)` — sem servidor HTTP. O `VideoProcessor` é provido **somente** no `WorkerModule` (per `phase-03-videos/TD-04`).
+4. Scripts `start:worker` / `start:worker:dev` no `package.json`; serviço `video-worker` no `compose.yaml` (mesmo build e volume do `nestjs-api`, comando `npm run start:worker:dev`, `depends_on` `db`/`redis` healthy e `minio-init` concluído).
+5. Fixture `test/fixtures/sample.mp4` (~2 s, 320x240, H.264 + AAC, < 1 MB) gerada com `ffmpeg -f lavfi` e versionada.
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| `FfmpegService` | Integration (FFmpeg real): `probe` da fixture retorna duração ≈ 2 s e codecs; `extractFrame` retorna bytes JPEG; arquivo inválido → exceção | `src/videos/ffmpeg/ffmpeg.service.integration-spec.ts` |
+| `VideoProcessor` | Unit (mocks): sucesso → `ready` com metadados; falha intermediária mantém `processing`; falha final → `failed`; vídeo inexistente ou não-`processing` → sem alterações | `src/videos/processors/video.processor.spec.ts` |
+| `VideoProcessor` | Integration (DB + MinIO + FFmpeg reais, `process()` chamado direto): fixture → `ready`, `duration_seconds`, `metadata`, thumbnail `image/jpeg` em `videos/{id}/thumbnail.jpg` | `src/videos/processors/video.processor.integration-spec.ts` |
+| `WorkerModule` | Unit: compilação do módulo | `src/worker/worker.module.spec.ts` |
+
+**Dependencies:** SI-03.2, SI-03.3
+
+**Acceptance criteria:**
+
+- `docker compose up -d` sobe `video-worker`, que conecta ao Redis e consome a fila `video-processing`.
+- A API não registra o processor (nenhum consumidor da fila no processo HTTP).
+- Status, duração, metadados e thumbnail ficam refletidos no banco e no storage.
+
+---
+
+### SI-03.8 — E2E do ciclo completo com o worker
+
+**Test Specs:** _pending /plan-test-specs_
+
+**Description:** Comprovar, contra a stack real do Compose, o ciclo upload → processamento → streaming → download, incluindo a falha de processamento.
+
+**Technical actions:**
+
+1. `test/videos-processing.e2e-spec.ts` (requer `video-worker` em execução): autenticar → `POST /videos` com a fixture → PUT da(s) parte(s) → complete → polling de `GET /videos/:publicId` até `ready` (timeout de 60 s) → conferir `duration_seconds`, `metadata` e `thumbnail_url` → stream 302 + `Range` → 206 → download 302 + `attachment`.
+2. Cenário de falha: upload de bytes que não são vídeo com `mime_type` aceito → após as 3 tentativas o owner vê `failed` com `error_message` (per `phase-03-videos/TD-08` revisão).
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| Ciclo completo com worker | E2E: sucesso (`ready` + 206) e falha (`failed`) | `test/videos-processing.e2e-spec.ts` |
+
+**Dependencies:** SI-03.5, SI-03.6, SI-03.7
+
+**Acceptance criteria:**
+
+- `draft → processing → ready` e `processing → failed` observados no banco pelo e2e.
+- Streaming (206) e download (`attachment`) comprovados após o processamento real.
+
+---
+
+### SI-03.9 — Documentação e contrato OpenAPI
+
+**Description:** Deixar a documentação de IA e o contrato coerentes com o código entregue.
+
+**Technical actions:**
+
+1. Regenerar `openapi.json` (`npm run openapi:export`) com os endpoints de vídeo.
+2. `CLAUDE.md` (raiz): Message Queue = BullMQ + Redis; seção do módulo de vídeos (endpoints, fluxo de upload, worker, storage), citando apenas arquivos existentes.
+3. `nestjs-project/CLAUDE.md`: serviços `redis`, `minio`, `minio-init`, `video-worker` (portas, verificações de prontidão `redis-cli ping` e healthcheck do MinIO, logs do worker); o worker é infraestrutura e sobe com `docker compose up -d`; variáveis novas; testes que dependem do worker.
+4. `docs/diagrams/software-arch.mermaid`: fila "TBD" → "BullMQ / Redis".
+
+**Tests:**
+
+| Artifact | Layer | Test file |
+|----------|-------|-----------|
+| `openapi.json` | Integration: export continua válido e inclui os paths `/videos` | `src/openapi-export.integration-spec.ts` (estender) |
+
+**Dependencies:** SI-03.8
+
+**Acceptance criteria:**
+
+- Toda referência da documentação aponta para arquivos e comportamentos existentes.
+- Definition of Done completa: `npm test`, `npm run test:e2e`, `npx tsc --noEmit` e `npm run lint` verdes.
 
 ---
 
@@ -290,10 +561,38 @@ Missing/invalid tokens keep the existing behavior: `JwtAuthGuard` throws Nest's 
 
 ## Dependency Map
 
-<!-- Dep Map will be written in Phase B -->
+```
+SI-03.1 (root — dependências, Compose, configs)
+├── SI-03.2 — entidade, migração, módulo
+│   ├── SI-03.4 — também depende de SI-03.3
+│   │   └── SI-03.5 — endpoints de upload
+│   │       └── SI-03.6 — endpoints públicos (estende o e2e da SI-03.5)
+│   └── SI-03.7 — worker (também depende de SI-03.3)
+└── SI-03.3 — StorageModule
+
+SI-03.8 — depende de SI-03.5, SI-03.6, SI-03.7
+SI-03.9 — depende de SI-03.8
+```
+
+Ordem de execução: 03.1 → 03.2 → 03.3 → 03.4 → 03.5 → 03.6 → 03.7 → 03.8 → 03.9 (03.3 pode vir antes de 03.2; 03.7 pode vir logo após 03.4).
 
 ---
 
 ## Deliverables
 
-<!-- Deliverables will be written in Phase B -->
+- [ ] SI-03.1 — Dependências, infraestrutura (Redis, MinIO) e configuração
+- [ ] SI-03.2 — Entidade Video, migração e módulo
+- [ ] SI-03.3 — StorageModule (cliente S3/MinIO)
+- [ ] SI-03.4 — Lookup de canal, exceções de domínio e VideosService
+- [ ] SI-03.5 — Endpoints de upload (VideosController)
+- [ ] SI-03.6 — Autenticação opcional e endpoints públicos (metadados, stream, download)
+- [ ] SI-03.7 — Worker de processamento (FFmpeg) e serviço `video-worker`
+- [ ] SI-03.8 — E2E do ciclo completo com o worker
+- [ ] SI-03.9 — Documentação e contrato OpenAPI
+
+**Full test suites:**
+
+- [ ] Backend tests pass (`cd nestjs-project && docker compose exec nestjs-api npm test -- --runInBand`)
+- [ ] E2E tests pass (`cd nestjs-project && docker compose exec nestjs-api npm run test:e2e -- --runInBand`)
+- [ ] Type/compilation checks pass (`cd nestjs-project && docker compose exec nestjs-api npx tsc --noEmit`)
+- [ ] Lint passes (`cd nestjs-project && docker compose exec nestjs-api npm run lint`)

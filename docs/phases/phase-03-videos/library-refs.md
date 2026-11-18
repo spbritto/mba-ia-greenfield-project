@@ -1,19 +1,19 @@
 ---
 libs:
   bullmq:
-    version: "latest"
+    version: "^6.7.7"
     context7_id: "/taskforcesh/bullmq"
     fetched_at: "2026-11-17T22:57:42"
   "@nestjs/bullmq":
-    version: "latest"
+    version: "^11.0.5"
     context7_id: "/nestjs/bull"
     fetched_at: "2026-11-17T22:57:42"
   "@aws-sdk/client-s3":
-    version: "latest"
+    version: "^3.1171.0"
     context7_id: "/aws/aws-sdk-js-v3"
     fetched_at: "2026-11-17T22:57:42"
   "@aws-sdk/s3-request-presigner":
-    version: "latest"
+    version: "^3.1171.0"
     context7_id: "/aws/aws-sdk-js-v3"
     fetched_at: "2026-11-17T22:57:42"
 sources_mtime:
