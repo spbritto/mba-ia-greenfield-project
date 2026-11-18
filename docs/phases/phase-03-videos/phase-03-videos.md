@@ -150,7 +150,7 @@ Para não competir com o `video-worker` em execução, a fila dos testes de inte
 **Route:** POST /videos/:videoId/upload/part-urls
 **Route:** POST /videos/:videoId/upload/complete
 **Route:** DELETE /videos/:videoId/upload
-**Test Specs:** _pending /plan-test-specs_
+**Test Specs:** see `nestjs-project/specs/videos-upload.plan.md`
 **Authorization:** JwtAuthGuard global (todas exigem token válido)
 
 **Description:** Expor o fluxo de upload via HTTP com DTOs validados, OpenAPI e sem o rate limit dos endpoints de autenticação.
@@ -182,7 +182,7 @@ Para não competir com o `video-worker` em execução, a fila dos testes de inte
 **Route:** GET /videos/:publicId
 **Route:** GET /videos/:publicId/stream
 **Route:** GET /videos/:publicId/download
-**Test Specs:** _pending /plan-test-specs_
+**Test Specs:** see `nestjs-project/specs/videos-public.plan.md`
 **Authorization:** Opcional — anônimo ou autenticado (`### Authorization Matrix`)
 
 **Description:** Permitir leitura anônima de vídeos `ready` reconhecendo o owner quando há token, e entregar stream/download por redirecionamento 302.
@@ -242,8 +242,6 @@ Para não competir com o `video-worker` em execução, a fila dos testes de inte
 ---
 
 ### SI-03.8 — E2E do ciclo completo com o worker
-
-**Test Specs:** _pending /plan-test-specs_
 
 **Description:** Comprovar, contra a stack real do Compose, o ciclo upload → processamento → streaming → download, incluindo a falha de processamento.
 
