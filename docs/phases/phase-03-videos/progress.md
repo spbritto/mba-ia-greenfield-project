@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 7/9 completed
+**SIs:** 8/9 completed
 
 ### SI-03.1 — Dependências, infraestrutura (Redis, MinIO) e configuração
 - **Status:** completed
@@ -53,9 +53,13 @@
   - Test fixture `test/fixtures/sample.mp4` generated with `ffmpeg -f lavfi` (2s, 320×240, H.264+AAC, ~60KB).
 
 ### SI-03.8 — E2E do ciclo completo com o worker
-- **Status:** pending
-- **Tests:**
+- **Status:** completed
+- **Tests:** videos-processing.e2e-spec (2: success cycle draft→processing→ready with duration/metadata/thumbnail + stream 302→206 + download 302→attachment; failure cycle invalid-bytes→processing→failed with error_message after 3 retries)
 - **Observations:**
+  - Test uses the real `test/fixtures/sample.mp4` fixture (~62KB) for the success scenario; random invalid bytes for the failure scenario.
+  - `pollUntilStatus` helper polls `GET /videos/:publicId` every 2s until the expected status or timeout. Success timeout 60s; failure timeout 120s (attempts=3 → two backoff waits, 5s + 10s ≈ 15s real).
+  - Asserts `draft` on initiate and `processing` on complete, and that `error_message` never contains the presigned URL (`X-Amz-`).
+  - Jest per-test timeouts set to 90s (success) and 150s (failure) to accommodate worker processing + retries.
 
 ### SI-03.9 — Documentação e contrato OpenAPI
 - **Status:** pending
