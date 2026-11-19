@@ -2,6 +2,7 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
+import { IS_OPTIONAL_AUTH_KEY } from '../decorators/optional-auth.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 const TEST_SECRET = 'test-secret';
@@ -43,6 +44,7 @@ describe('JwtAuthGuard', () => {
   });
 
   beforeEach(() => {
+    mockReflector.getAllAndOverride.mockReset();
     mockReflector.getAllAndOverride.mockReturnValue(false);
   });
 
@@ -86,6 +88,54 @@ describe('JwtAuthGuard', () => {
     const ctx = makeContext({
       headers: { authorization: `Bearer ${expiredToken}` },
     });
+    await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+  });
+
+  // ── @OptionalAuth() behavior ───────────────────────────────
+
+  describe('@OptionalAuth()', () => {
+    beforeEach(() => {
+      // Simulate @OptionalAuth() route: IS_PUBLIC_KEY=false, IS_OPTIONAL_AUTH_KEY=true
+      mockReflector.getAllAndOverride.mockImplementation(
+        (key: string) => key === IS_OPTIONAL_AUTH_KEY,
+      );
+    });
+
+    it('allows anonymous access (no header) on optional-auth routes', async () => {
+      const request: Record<string, unknown> = { headers: {} };
+      const ctx = makeContext(request);
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(request.user).toBeUndefined();
+    });
+
+    it('attaches user when a valid token is provided on optional-auth routes', async () => {
+      const token = jwtService.sign({
+        sub: 'user-2',
+        email: 'b@example.com',
+      });
+      const request: Record<string, unknown> = {
+        headers: { authorization: `Bearer ${token}` },
+      };
+      const ctx = makeContext(request);
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect((request.user as Record<string, unknown>)?.sub).toBe('user-2');
+    });
+
+    it('throws UnauthorizedException on invalid token even on optional-auth routes', async () => {
+      const ctx = makeContext({
+        headers: { authorization: 'Bearer invalid-token' },
+      });
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+  });
+
+  // Verify non-optional-auth routes are unaffected by the new code path
+  it('still rejects missing header on regular (non-optional) routes', async () => {
+    // Both metadata keys return false (default non-public, non-optional)
+    mockReflector.getAllAndOverride.mockReturnValue(false);
+    const ctx = makeContext({ headers: {} });
     await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
   });
 });

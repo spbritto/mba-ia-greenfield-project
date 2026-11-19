@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 4/9 completed
+**SIs:** 6/9 completed
 
 ### SI-03.1 — Dependências, infraestrutura (Redis, MinIO) e configuração
 - **Status:** completed
@@ -24,14 +24,23 @@
 - **Observations:** Added ChannelsService.findByUserId for ownership lookup (single responsibility). 6 domain exceptions created. VideosService with full upload lifecycle (initiate → refresh → complete/abort), public read (findByPublicId, getStreamUrl, getDownloadUrl), public_id retry with compensation pattern. BullMQ integration tests use queue prefix for isolation. PART_SIZE = 100 MiB.
 
 ### SI-03.5 — Endpoints de upload (VideosController)
-- **Status:** pending
-- **Tests:**
+- **Status:** completed
+- **Tests:** videos.e2e-spec (13: initiate 201 + validation 400×4 + 401; refresh 200 + 403; complete 200 + 409 + UPLOAD_INCOMPLETE 400 + SIZE_MISMATCH 400; abort 204)
 - **Observations:**
+  - DTOs created in `src/videos/dto/` with request DTOs (class-validator only, no @ApiProperty per nestjs-dtos rule) and response DTOs (@ApiProperty for OpenAPI).
+  - `@SkipThrottle()` applied at controller class level to bypass the global 10 req/min throttle (upload polling exceeds it).
+  - `VideosController` registered in `VideosModule` via `controllers` array.
+  - E2E tests use a minimal synthetic MP4 buffer (ftyp+mdat boxes) for real multipart upload to MinIO via presigned URLs.
 
 ### SI-03.6 — Autenticação opcional e endpoints públicos (metadados, stream, download)
-- **Status:** pending
-- **Tests:**
+- **Status:** completed
+- **Tests:** jwt-auth.guard.spec (9: existing 5 + new 3 @OptionalAuth + 1 non-optional regression), videos.e2e-spec (+7: metadata anon-ready 200, metadata anon-draft 404, metadata owner-draft 200, metadata invalid-token 401, stream anon-ready 302+206, stream owner-draft 409, download anon-ready 302+attachment)
 - **Observations:**
+  - `@OptionalAuth()` decorator + `IS_OPTIONAL_AUTH_KEY` metadata key; guard checks optional-auth after public, before rejecting missing header.
+  - `ParsePublicIdPipe` validates 12-char `[A-Za-z0-9_-]` publicId.
+  - `@Redirect()` decorator on stream/download endpoints; handler returns `{ url }` for NestJS to redirect 302.
+  - `VideoMetadataResponseDto` with full `@ApiProperty` annotations for OpenAPI (response DTO, not validated input).
+  - E2E tests seed a "ready" video directly via repository + `StorageService.putObject` to avoid enqueuing a processing job.
 
 ### SI-03.7 — Worker de processamento (FFmpeg) e serviço `video-worker`
 - **Status:** pending
