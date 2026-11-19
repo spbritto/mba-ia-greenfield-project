@@ -1,0 +1,2084 @@
+
+ ▐▛███▜▌   Claude Code v2.1.37
+▝▜█████▛▘  Opus 4.6 · Claude Pro
+  ▘▘ ▝▝    C:\dev\mba-ia-greenfield-project
+
+❯ /plan-validate 03 
+
+● I'll start by reading the shared conventions and then performing the preflight
+   checks.
+
+● Searched for 9 patterns, read 1 file (ctrl+o to expand)
+
+● The plan-pipeline/SKILL.md is referenced from the skill. Let me search for it.
+
+● Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+● Good. Now I have the shared conventions. Let me proceed with the preflight
+  checks.
+
+  Preflight Step 1 — Mode detection. Argument is 03 (integer) → phase mode,
+  NN=3.
+
+  Preflight Step 2 — Slug discovery. I need to find the phase-scope decisions
+  doc for phase 3 using atomic Grep set-arithmetic.
+
+● Searched for 2 patterns (ctrl+o to expand)
+
+● Hmm, no matches. Let me verify the frontmatter format of the phase-03
+  decisions doc.
+
+● Read 1 file (ctrl+o to expand)
+
+● The file exists with scope_type: phase and related_phases: [3]. The Grep must
+  be failing due to Windows line endings or encoding. Let me try a more relaxed
+  pattern.
+
+● Searched for 2 patterns (ctrl+o to expand)
+
+● Set intersection: S_phase ∩ S_NN = {technical-decisions-phase-03-videos.md}.
+  Exactly one match → slug is phase-03-videos, target directory is
+  docs/phases/phase-03-videos/.
+
+  Preflight Step 3 — context.md existence. Already confirmed:
+  docs/phases/phase-03-videos/context.md exists.
+
+  Preflight Step 4 — context.md frontmatter kind check. Let me read the
+  frontmatter.
+
+● Read 1 file (ctrl+o to expand)
+
+● Frontmatter: kind: phase, name: phase-03-videos. This matches phase mode. No
+  state: field present (Step 4.5 not applicable — also only applies in task
+  mode).
+
+  Preflight Step 5 — Staleness check. I need to stat each source file and
+  compare against recorded sources_mtime.
+
+● Bash(cd /c/dev/mba-ia-greenfield-project && stat -c '%y' docs/project-plan.md
+      docs/decisions/technical-decisions-phase-03-videos.md
+      docs/decisions/technical-decision…)
+  ⎿  2026-11-11 22:46:19.336904400 -0300
+     2026-11-12 23:51:16.887677800 -0300
+     2026-11-11 22:46:19.320912600 -0300
+     … +4 lines (ctrl+o to expand)
+
+● All mtimes match the recorded sources_mtime values. No staleness detected.
+
+  Preflight Step 6 — Prior validation.md. Let me check if one exists.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● No prior validation.md — this is a first run. No prior issues to recover.
+
+  Now let me read the full context.md to run the coherence checks.
+
+● Read 1 file (ctrl+o to expand)
+
+● I now have the full context.md in memory. Let me also check for custom
+  validation rules before running the checks.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● No custom validation rules. Now let me check the slice count (for Check 8 — we
+   already know from slug discovery that there is exactly 1 phase-scope doc for
+  phase 3, so Check 8 is suppressed).
+
+  Now I'll run all coherence checks systematically.
+
+  ---
+  Check 1 — Inconsistencies (IC-N)
+
+  Phase mode: Compare each capability bullet from ## Scope against decided TDs.
+
+  Capabilities:
+  1. "Serviço de armazenamento de arquivos (vídeos e thumbnails)" → TD-03 (S3
+  client), TD-09 (Storage key organization) — consistent.
+  2. "Serviço de processamento em segundo plano (filas)" → TD-01 (BullMQ +
+  Redis) — consistent.
+  3. "Upload de vídeos com suporte a arquivos de até 10GB sem impacto na
+  performance" → TD-02 (presigned URL), TD-05 (multipart upload) — consistent.
+  TD-02 says "10GB transfer goes directly from client to MinIO/S3, leaving
+  NestJS unloaded" — matches "sem impacto na performance."
+  4. "Pré-cadastro automático do vídeo como rascunho ao iniciar o upload" →
+  TD-08 (draft → processing → ready | failed) — consistent. Draft is the initial
+   state.
+  5. "Processamento automático do vídeo após upload (extração de duração e
+  metadados)" → TD-04 (separate worker, FFmpeg via child_process) — consistent.
+  6. "Geração automática de thumbnail a partir de um frame do vídeo" → TD-04 —
+  consistent (mentions thumbnail extraction).
+  7. "URL única por vídeo, sem conflito com outros vídeos" → TD-06
+  (NanoID-format 12-char) — consistent.
+  8. "Reprodução via streaming (sem necessidade de download completo)" → TD-07
+  (presigned GET URL, handles Range requests) — consistent.
+  9. "Download do vídeo pelo usuário" → TD-07 — consistent.
+
+  Cross-TD check: No two TDs imply mutually exclusive behavior. TD-02 (presigned
+   upload) + TD-05 (multipart only) are complementary. TD-07 (presigned GET) +
+  TD-08 (status lifecycle) — no conflict; status ready enables URL generation.
+
+  No ## UI Inventory present → UI ↔ Scope inconsistency check skipped.
+
+  Scope-Subsection orphan check: All TDs in ## Decisions Index have Scope:
+  Backend. No Scope: Frontend TDs → orphan check does not fire.
+
+  Result: No IC-N issues.
+
+  ---
+  Check 2 — Ambiguities (AMB-N)
+
+  For each capability:
+
+  1. "Serviço de armazenamento de arquivos (vídeos e thumbnails)" — Specific:
+  TD-03 and TD-09 define the library and key structure. Clear.
+  2. "Serviço de processamento em segundo plano (filas)" — Specific: TD-01
+  defines BullMQ + Redis. Clear.
+  3. "Upload de vídeos com suporte a arquivos de até 10GB sem impacto na
+  performance" — Specific: TD-02 (presigned URL) + TD-05 (multipart only).
+  Concrete flow. Clear.
+  4. "Pré-cadastro automático do vídeo como rascunho ao iniciar o upload" —
+  Specific: TD-08 defines the lifecycle. TD-02 describes the initiation flow.
+  Clear.
+  5. "Processamento automático do vídeo após upload (extração de duração e
+  metadados)" — Specific: TD-04 (separate worker, FFmpeg, ffprobe for metadata).
+   Clear. Edge case: what happens on failure? TD-08 covers it (→ failed state).
+  6. "Geração automática de thumbnail a partir de um frame do vídeo" — TD-04
+  mentions "thumbnail extraction." The key videos/{videoId}/thumbnail.jpg is in
+  TD-09. However: which frame? TD-04 says FFmpeg via ffprobe for metadata and
+  ffmpeg for thumbnail extraction, but does not specify the frame selection
+  strategy (e.g., at 10% of duration? first keyframe? random?). This could be
+  clarified during implementation, but it's a minor ambiguity — a reasonable
+  implementer would default to a sensible choice (e.g., first keyframe or frame
+  at 25% duration). Borderline, but NOT blocking — this is an implementation
+  detail, not a strategic choice. Not flagging.
+  7. "URL única por vídeo, sem conflito com outros vídeos" — Specific: TD-06
+  (12-char NanoID via node:crypto, UNIQUE constraint, retry on collision).
+  Clear.
+  8. "Reprodução via streaming (sem necessidade de download completo)" —
+  Specific: TD-07 (presigned GET URL, S3 handles Range). Clear.
+  9. "Download do vídeo pelo usuário" — TD-07 covers this. Clear.
+
+  Phase boundary check: Phase 03 scope is explicitly backend-only. Boundary with
+   Phase 04 (video management, draft → publication, channel management) is
+  clearly delineated in "Out of scope." No ambiguity about which capabilities
+  belong here vs. Phase 04.
+
+  Result: No AMB-N issues.
+
+  ---
+  Check 3 — Missing Decisions (MD-N)
+
+  Uncovered bullet sub-type: Check ## Capability Coverage — every capability has
+   ≥1 TD. All 9 capabilities are covered.
+
+  Decision without TD sub-type: Are there strategic choices implied by
+  capabilities that no TD resolves?
+
+  - Upload size limits? TD-05 covers multipart for 0-10GB range. Part size
+  strategy? This is an implementation detail of multipart upload, not a
+  strategic choice.
+  - Video format restrictions? The scope says "Upload de vídeos" but doesn't
+  mention format restrictions. TD-04 mentions FFmpeg processes videos. What
+  happens with unsupported formats? The status lifecycle (TD-08) has failed
+  state for this case. Format restrictions could be implementation detail.
+  Borderline — but a reasonable implementer would implement format validation
+  without needing a TD. Not flagging.
+  - Stale draft cleanup: TD-08 mentions "Stale drafts cleaned by a periodic job
+  with configurable TTL" — this is an implementation detail covered in the TD.
+  - Error response format for new video endpoints: The scope says the phase
+  exposes HTTP endpoints. Do prior TDs define the error response format for
+  nestjs-project? Yes — phase-02-auth/TD-07 defines "Custom Domain Exception
+  Filter" with { statusCode, error, message } format. This is inherited.
+  - OpenAPI documentation: Covered by inherited openapi-docs-nestjs TDs.
+
+  Shared-types contract sync (Decisão #29): Check conditions — ui_in_scope is
+  false (no ## UI Inventory, explicit "Deferred subprojects: next-frontend/"). 
+  Never fires when phase is UI-less → skip.
+
+  Result: No MD-N issues.
+
+  ---
+  Check 4 — Dependency Gaps (DG-N)
+
+  Phase mode: Check ## Inherited Conventions against capabilities.
+
+  - Phase 03 depends on Phase 01 (config) and Phase 02 (auth, validation, error
+  handling). ## Inherited Conventions lists conventions from both.
+  - Upload endpoints require authentication → Phase 02 provides JWT guard.
+  Convention documented: "Phase 03 upload endpoints require authentication (user
+   must be logged in to upload); use the existing JWT guard." Covered.
+  - Domain exceptions → Phase 02 provides custom exception filter. Convention
+  documented. Covered.
+  - Request validation → Phase 02 provides class-validator + class-transformer.
+  Convention documented. Covered.
+  - Config pattern → Phase 01 provides @nestjs/config + registerAs. Convention 
+  documented. Covered.
+  - Database → Phase 01 provides TypeORM setup with autoLoadEntities: true.
+  Convention documented. Covered.
+  - OpenAPI → Inherited from openapi-docs-nestjs. Convention documented.
+  Covered.
+
+  Within-phase ordering: 
+  - Storage service must exist before upload endpoints can generate presigned
+  URLs. The video entity must exist before the service can create records. The
+  queue must be configured before jobs can be enqueued. These are natural
+  implementation ordering but do not constitute "dependency gaps" — they're
+  standard intra-module dependencies.
+
+  Result: No DG-N issues.
+
+  ---
+  Check 5 — Inherited Constraint Conflicts (ICC-N)
+
+  Check every current-scope TD against inherited conventions and inherited TDs:
+
+  - TD-01 (BullMQ + Redis): Adds Redis to the stack. No inherited TD constrains 
+  message queue technology. Phase 01 config pattern accommodates new config
+  files (queue.config.ts). No conflict.
+  - TD-02 (Presigned URL upload): No inherited constraint on upload strategy. No
+   conflict.
+  - TD-03 (AWS SDK v3 for S3): No inherited constraint on storage client. No
+  conflict.
+  - TD-04 (Separate worker container): No inherited constraint against separate
+  containers. No conflict.
+  - TD-05 (S3 Multipart Upload only): No inherited constraint on upload
+  protocol. No conflict.
+  - TD-06 (NanoID-format 12-char ID): Phase 01 uses UUIDs for primary keys.
+  TD-06 clarifies "internal PK stays UUID; this short ID is only the public URL
+  identifier." No conflict.
+  - TD-07 (Presigned GET URL for streaming): No inherited constraint on
+  streaming. No conflict.
+  - TD-08 (Video status lifecycle): No inherited constraint on entity status
+  patterns. No conflict.
+  - TD-09 (Single bucket, type-prefixed keys): No inherited constraint on
+  storage organization. No conflict.
+
+  Check against inherited TDs specifically:
+  - phase-02-auth/TD-09 (JWT for refresh tokens) — unrelated to Phase 03 TDs.
+  - phase-02-auth/TD-07 (Custom Domain Exception Filter) — Phase 03 adds new
+  domain exceptions (VideoNotFound, etc.). Convention says "Phase 03 introduces
+  new domain exceptions." Consistent, not conflicting.
+
+  Result: No ICC-N issues.
+
+  ---
+  Check 6 — Unresolved Open Questions (OQ-N)
+
+  Check ## Decisions Index for TDs with Status: pending. All 9 TDs have Status:
+  decided. No pending TDs.
+
+  No prior validation.md exists, so no carried-forward open questions.
+
+  No ## UI Inventory → no inventory open questions.
+
+  Result: No OQ-N issues.
+
+  ---
+  Check 7 — UI Coverage Gaps (UIG-N)
+
+  No ## UI Inventory present → skip entirely.
+
+  Result: No UIG-N issues.
+
+  ---
+  Check 8 — Cross-slice Coverage
+
+  Phase 3 has exactly 1 phase-scope doc → suppressed.
+
+  ---
+  All checks pass with zero issues. Now let me compute the verdict and write
+  validation.md.
+
+  Verdict computation: No issues in any category → status: clean.
+
+  Now let me get the mtime for context.md and the decisions doc for
+  sources_mtime:
+
+● Bash(cd /c/dev/mba-ia-greenfield-project && stat -c '%y'
+      docs/phases/phase-03-videos/context.md
+      docs/decisions/technical-decisions-phase-03-videos.md 2>&1)
+  ⎿  2026-11-13 00:13:11.628968400 -0300
+     2026-11-12 23:51:16.887677800 -0300
+
+● Now I'll write the validation.md.
+
+● Write(docs\phases\phase-03-videos\validation.md)
+  ⎿  Wrote 1 lines to docs\phases\phase-03-videos\validation.md
+     ---
+     kind: phase
+     name: phase-03-videos
+     status: clean
+     issue_count: 0
+     sources_mtime:
+       docs/phases/phase-03-videos/context.md: "2026-11-13T00:13:11"
+       docs/decisions/technical-decisions-phase-03-videos.md:
+     "2026-11-12T23:51:16"
+     issues: []
+     ---
+
+● Validation complete — status: clean.
+
+  Phase 03 (Upload e Processamento de Vídeos) passed all 7 applicable coherence
+  checks with zero issues:
+
+  - Inconsistencies: None — all 9 TDs are consistent with scope capabilities
+  - Ambiguities: None — every capability has concrete technical decisions
+  backing it
+  - Missing Decisions: None — all 9 capabilities are covered by TDs; no
+  strategic choices left unresolved
+  - Dependency Gaps: None — prerequisites from Phase 01 (config) and Phase 02
+  (auth, validation, error handling) are properly inherited
+  - Inherited Constraint Conflicts: None — no current TD contradicts inherited
+  conventions
+  - Unresolved Open Questions: None — all 9 TDs are decided
+  - UI Coverage Gaps: N/A — backend-only phase, no UI inventory
+  - Cross-slice Coverage: N/A — single slice (monolithic phase)
+
+  The pipeline is ready for /plan-build 03.
+
+✻ Baked for 2m 30s
+
+❯ /export 
+  ⎿  Conversation exported to:
+     2026-11-13-command-messageplan-validatecommand-message.txt
+
+❯ /plan-context 03 
+
+● I need to regenerate context.md for Phase 03. Let me start with the preflight
+  checks and mode detection.
+
+  Preflight Step 1 — Mode detection. Argument is 03 (integer) → phase mode,
+  NN=3.
+
+  Preflight Step 2 — Slug discovery. I already know from the previous run that
+  there's exactly one phase-scope doc for phase 3:
+  technical-decisions-phase-03-videos.md → slug = phase-03-videos, target dir =
+  docs/phases/phase-03-videos/.
+
+  Let me verify the slug discovery is still valid, and check the directory
+  exists.
+
+● Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+● S_phase ∩ S_NN = 1 match → slug phase-03-videos. Directory exists.
+
+  Preflight Step 3 — Testing guide availability. The affected subproject is
+  nestjs-project/ — the testing-guide-nestjs-project skill is listed in the
+  available skills.
+
+  Step 0 — Compute scope_prose. Need to check the slice's decisions doc for
+  covers_capabilities and read the project-plan.md phase bullets.
+
+● Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● No covers_capabilities in frontmatter → monolithic. I need to read the phase
+  bullets from project-plan.md.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Phase 03 starts at line 67 and Phase 04 starts at line 87. Let me read that
+  section.
+
+● Read 1 file (ctrl+o to expand)
+
+● Good. scope_prose = the 9 capability bullets joined: "Serviço de armazenamento
+   de arquivos (vídeos e thumbnails); Serviço de processamento em segundo plano
+  (filas); Upload de vídeos com suporte a arquivos de até 10GB sem impacto na
+  performance; Pré-cadastro automático do vídeo como rascunho ao iniciar o
+  upload; Processamento automático do vídeo após upload (extração de duração e
+  metadados); Geração automática de thumbnail a partir de um frame do vídeo; URL
+   única por vídeo, sem conflito com outros vídeos; Reprodução via streaming
+  (sem necessidade de download completo); Download do vídeo pelo usuário"
+
+  Step 0.5 — UI scope detection. Check if any bullet matches UI phrasing (Tela, 
+  Página, Área, Login, UI). None of the 9 bullets contain these terms — this is
+  a backend-only phase. No UI scope → skip UI handling entirely. ## UI Inventory
+   will not be emitted.
+
+  Step 1 — Dispatch subagents in parallel. I need to dispatch:
+  1. plan-reader (NN=3)
+  2. decisions-reader (mode=phase, identifier=phase-03-videos)
+  3. decisions-detail-reader (mode=phase, identifier=phase-03-videos)
+  4. decisions-correlator (mode=phase, identifier=phase-03-videos, scope_prose)
+  5. phases-reader (mode=phase, NN=3, slug=phase-03-videos)
+
+  No inventory-digest-reader (no UI scope).
+
+● 5 Task agents launched (ctrl+o to expand)
+   ├─ Extract phase 03 scope
+   │  ⎿  Running in the background (shift+↑ to manage)
+   ├─ Build decisions index phase 03
+   │  ⎿  Running in the background (shift+↑ to manage)
+   ├─ Extract TD details phase 03
+   │  ⎿  Running in the background (shift+↑ to manage)
+   ├─ Correlate ad-hoc decisions
+   │  ⎿  Running in the background (shift+↑ to manage)
+   └─ Extract prior phases inheritance
+      ⎿  Running in the background (shift+↑ to manage)
+
+● All 5 subagents are running. Let me wait for them to complete. Let me check on
+   the ones that might be done.
+
+● Task Output a1a7575
+  ⎿  Read output (ctrl+o to expand)
+
+● Task Output a634fd9
+  ⎿  Read output (ctrl+o to expand)
+
+● Two done. Let me read their outputs and wait for the remaining ones.
+
+● Read 2 files (ctrl+o to expand)
+
+● Task Output a90864c
+  ⎿  Read output (ctrl+o to expand)
+
+● Task Output ad99da9
+  ⎿  Read output (ctrl+o to expand)
+
+● Task Output a20f547
+  ⎿  Read output (ctrl+o to expand)
+
+● All agents completed. The output files seem empty — the agent results are
+  returned directly. Let me resume each agent to get the actual output.
+
+● 5 Task agents finished (ctrl+o to expand)
+   ├─ Get plan-reader output · 0 tool uses
+   │  ⎿  Done
+   ├─ Get decisions-reader output · 0 tool uses
+   │  ⎿  Done
+   ├─ Get detail-reader output · 0 tool uses
+   │  ⎿  Done
+   ├─ Get correlator output · 0 tool uses
+   │  ⎿  Done
+   └─ Get phases-reader output · 0 tool uses
+      ⎿  Done
+
+● All 5 subagents returned. Let me now proceed with Step 2 — Filter Trace
+  verification, then Step 4 (correlator confirmation), and assembly.
+
+  Step 2 — Filter Trace verification.
+
+  First, let me run the independent glob to cross-check.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● T_caller = 8, set_caller = 8 files.
+
+  Per-agent count/set check:
+  - decisions-reader: Filter Trace says "Globbed T=8 candidates" — traces 8
+  files. All 8 basenames match. T_agent = 8 == T_caller. Pass.
+  - decisions-detail-reader: Filter Trace says "Globbed T=8 candidates" — traces
+   8 files. All 8 basenames match. T_agent = 8 == T_caller. Pass.
+
+  Cross-agent consistency check:
+  - decisions-reader kept: {technical-decisions-phase-03-videos.md} 
+  - decisions-detail-reader kept: {technical-decisions-phase-03-videos.md}
+  - Both agree. Pass.
+
+  TD count match (Gate 5):
+
+  Let me count decided TDs in the kept file and in the detail-reader output.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Hmm, 0 matches but says 9? Let me verify differently.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Expected = 9 decided TDs. Now count in agent output: the detail-reader output
+  has TD-01 through TD-09 — 9 blocks. actual == expected. Pass.
+
+  Gate 6 — Cosmetic detection (soft):
+  - Preamble: The detail-reader output starts with ## Decisions Detail for Phase
+   03 / slice phase-03-videos — no preamble chars. Pass.
+  - Option-X prefix retention: Looking at the Recommendation lines... TD-01 says
+   "BullMQ on Redis is the most..." (no "Option B" prefix). TD-02 says "The API
+  generates lightweight presigned URLs..." (no prefix). All recommendations have
+   the prefix stripped. Pass.
+
+  All verification gates pass.
+
+  Step 4 — Confirm correlated decisions.
+
+  The correlator returned 4 entries. Two are relevant:
+  - openapi-docs-nestjs — MEDIUM relevance (video endpoints need OpenAPI
+  decorators)
+  - next-frontend-openapi-typing — LOW (codegen pipeline, but Phase 03 is
+  backend-only)
+  - next-frontend-config-base — LOW
+  - next-frontend-msw-foundation — LOW
+
+● User answered Claude's questions:
+  ⎿  · Found 4 potentially correlated ad-hoc decisions docs (related_phases:
+      []). Select which ones should feed Inherited Decisions Detail for 
+     Phase 03: → openapi-docs-nestjs
+
+● User confirmed: only openapi-docs-nestjs. I need to read its decided TDs for
+  the inherited block. Let me extract the Recommendation + Libraries from that
+  doc's decided TDs.
+
+● Searched for 2 patterns (ctrl+o to expand)
+
+● 3 decided TDs. Let me read the Recommendation and Libraries for each.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Let me get the full text for TD-01's Recommendation.
+
+● Read 1 file (ctrl+o to expand)
+
+● Now let me also get the Libraries for TD-02 and TD-03.
+
+● Read 1 file (ctrl+o to expand)
+
+● Good. TD-02 has no **Libraries:** line and TD-03 has none either. Let me
+  verify.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Only TD-01 has libraries. TD-02 and TD-03 have none — I'll use —.
+
+  Now Step 5 — Testing Requirements. Let me load the testing guide skill for
+  nestjs-project.
+
+● Skill(testing-guide-nestjs-project)
+  ⎿  Successfully loaded skill
+
+● Good, I have the testing guide loaded. Now let me proceed with Step 6 — Record
+   sources_mtime and then Step 7 — Assemble context.md.
+
+● Bash(cd /c/dev/mba-ia-greenfield-project && stat -c '%y' docs/project-plan.md
+      docs/decisions/technical-decisions-phase-03-videos.md
+      docs/decisions/technical-decision…)
+  ⎿  2026-11-11 22:46:19.336904400 -0300
+     2026-11-13 12:26:58.258583600 -0300
+     2026-11-11 22:46:19.320912600 -0300
+     … +3 lines (ctrl+o to expand)
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Note: the decisions doc for phase-03-videos has a newer mtime
+  (2026-11-13T12:26:58) compared to what the previous context.md had
+  (2026-11-12T23:51:16). This confirms context.md needs regeneration. Also note
+  the phases-reader returned inheritance from phase-02-auth-frontend too — let
+  me include that in sources_mtime.
+
+  Now I need to determine which prior phase context.md files the phases-reader
+  actually consumed. The output shows inheritance from phase-01, phase-02-auth,
+  and phase-02-auth-frontend. Let me also check the testing guide SKILL.md
+  mtime.
+
+● Bash(cd /c/dev/mba-ia-greenfield-project && stat -c '%y'
+      .claude/skills/testing-guide-nestjs-project/SKILL.md 2>&1)
+  ⎿  2026-11-11 22:46:19.132680900 -0300
+
+● Now I have all the mtimes. Let me assemble the full context.md.
+
+  Looking at the phases-reader output, I need to process:
+  - Conventions: from phase 01 (6 bullets), plus conventions from phase 02
+  (auth, validation, throttling, error handling, OpenAPI). The phases-reader
+  only listed phase 01 conventions explicitly. Let me check if the prior
+  context.md had more conventions from phase 02 that I should preserve.
+
+  Looking at the previous context.md's ## Inherited Conventions, it had 
+  conventions from phase 01 AND phase 02. The phases-reader output only listed
+  phase 01 conventions under "Conventions to Match." But the inherited TDs
+  include phase 02, phase 02-auth-frontend, and multiple ad-hoc docs. I need to
+  make sure conventions from phase 02 are included.
+
+  Let me check the prior phases' context.md for their conventions sections to
+  properly rebuild this.
+
+● Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+● Phase 02-auth inherited from phase 01 only. Now let me check what conventions
+  phase 02-auth itself established (from its Decisions Detail) that should
+  propagate to phase 03. These would come from phase 02's own TDs that
+  established patterns. The previous context.md already had these conventions
+  listed — let me use the phases-reader output which properly extracted them.
+
+  Looking at the phases-reader output more carefully, I see it only listed Phase
+   01 conventions under "Conventions to Match." But the previous context.md had
+  additional conventions from Phase 02 (auth guards, domain exceptions,
+  validation, throttling, OpenAPI). The phases-reader may have missed extracting
+   Phase 02's own conventions.
+
+  Let me check if the previous context.md conventions were correct and use the
+  phases-reader output plus manually supplement with Phase 02 conventions that
+  should propagate.
+
+  The previous context.md listed these conventions from phase 02:
+  - Auth uses custom guards with @nestjs/jwt (no @nestjs/passport)
+  - Domain exceptions mapped by custom exception filter
+  - Request validation via class-validator + class-transformer with 
+  ValidationPipe
+  - Rate limiting via @nestjs/throttler
+  - All endpoints documented with @nestjs/swagger decorators (from 
+  openapi-docs-nestjs)
+
+  These are legitimate conventions established by Phase 02 that Phase 03 must
+  follow. The phases-reader extracted inherited TDs but didn't extract those as
+  conventions. I need to check what Phase 02-auth's context.md established as
+  conventions in its own Decisions Detail.
+
+  Actually, looking at the skill instructions again: conventions come from prior
+   phases' context.md ## Inherited Conventions sections AND any conventions 
+  those phases themselves established. The phases-reader output only had Phase
+  01 conventions. But Phase 02 established new patterns (auth guards, exception
+  filter, validation, throttling, OpenAPI) that Phase 03 inherits.
+
+  Let me check if the Phase 02-auth-frontend context.md has additional
+  conventions.
+
+● Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+● Phase 02-auth-frontend has no inherited conventions (it's frontend scope —
+  makes sense).
+
+  Now I have all the data. The phases-reader gave me the conventions from phase
+  01 and the full set of inherited TDs from both phase-01 and phase-02 (plus
+  phase-02-auth-frontend and the ad-hoc docs). The previous context.md's Phase
+  02 convention bullets were derived from the TDs — they represent established
+  patterns. I'll reconstruct them from what Phase 02's TDs tell us, maintaining
+  the same pattern as the previous context.md.
+
+  Let me now build the full context.md. I also need to handle the dedupe for ##
+  Inherited Decisions Detail — the correlator-confirmed openapi-docs-nestjs TDs 
+  need to be checked against what the phases-reader already returned. The
+  phases-reader output includes openapi-docs-nestjs/TD-01, TD-02, TD-03 already
+  (they came through phase-02-auth-frontend's inherited chain). So the
+  correlator-confirmed doc's TDs are already present → no additional entries
+  needed from the correlator for ## Inherited Decisions Detail (dedupe drops
+  them).
+
+  Now let me write the full context.md.
+
+● Read 1 file (ctrl+o to expand)
+
+● Now I have the previous context.md fully in memory. I'll regenerate it with:
+  1. Updated sources_mtime (decisions doc changed)
+  2. Updated ## Decisions Detail with revisions from the decisions-detail-reader
+  3. Expanded ## Inherited Decisions Detail including phase-02-auth-frontend TDs
+  4. Expanded ## Inherited Deferred Capabilities including all deferred entries
+  5. Remove the old ## Correlated Ad-Hoc Decisions section (not part of the
+  template)
+
+● Write(docs\phases\phase-03-videos\context.md)
+  ⎿  Added 347 lines, removed 326 lines
+        1 ----                                                          
+        2 -kind: phase                                                  
+        3 -name: phase-03-videos                                        
+        4 -sources_mtime:                                               
+        5 -  docs/project-plan.md: "2026-11-11T22:46:19"                
+        6 -  docs/decisions/technical-decisions-phase-03-videos.md:      
+          -"2026-11-12T23:51:16"                                        
+        7 -  docs/decisions/technical-decisions-phase-01-                
+          -configuracao-base.md: "2026-11-11T22:46:19"                  
+        8 -  docs/decisions/technical-decisions-phase-02-auth.md:        
+          -"2026-11-11T22:46:19"                                        
+        9 -  docs/decisions/technical-decisions-openapi-docs-nestjs.md:  
+          -"2026-11-11T22:46:19"                                        
+       10 -  docs/phases/phase-01-configuracao-base                      
+          -/context.md: "2026-11-11T22:46:19"                           
+       11 -  docs/phases/phase-02-auth/context.md: "2026-11-11T22:46:19"
+       12 ----                                                          
+       13 -                                                             
+       14 -# phase-03-videos — Context                                  
+       15 -                                                             
+       16 -## Scope                                                     
+       17 -                                                             
+       18 -**Phase name:** Fase 03 — Upload e Processamento de Vídeos   
+       19 -                                                             
+       20 -**Capabilities**                                             
+       21 -                                                             
+       22 -- Serviço de armazenamento de arquivos (vídeos e thumbnails) 
+       23 -- Serviço de processamento em segundo plano (filas)          
+       24 -- Upload de vídeos com suporte a arquivos de até 10GB sem     
+          -impacto na performance                                       
+       25 -- Pré-cadastro automático do vídeo como rascunho ao iniciar o 
+          -upload                                                       
+       26 -- Processamento automático do vídeo após upload (extração de  
+          -duração e metadados)                                         
+       27 -- Geração automática de thumbnail a partir de um frame do     
+          -vídeo                                                        
+       28 -- URL única por vídeo, sem conflito com outros vídeos        
+       29 -- Reprodução via streaming (sem necessidade de download       
+          -completo)                                                    
+       30 -- Download do vídeo pelo usuário                             
+       31 -                                                             
+       32 -**Out of scope:** Edição de informações do vídeo (            
+          -título, descrição, categoria), visibilidade (público/unlisted)
+          -, fluxo de rascunho → publicação, painel de gerenciamento     
+          -do canal,                                                     
+          -página pública do canal — all deferred to Phase 04. Frontend  
+          -video interface — Phase 03 is explicitly a backend-only       
+          -deliverable per `objetivo_desafio.md`.                       
+       33 -                                                             
+       34 -**Deliverables:** upload de até 10GB funcional, processamento 
+          -automático do vídeo, streaming funcionando, URLs únicas       
+          -geradas.                                                     
+       35 -                                                             
+       36 -**Affected subprojects:** `nestjs-project/`                  
+       37 -                                                             
+       38 -**Deferred subprojects:** `next-frontend/` — no frontend video
+          - interface in this phase.                                    
+       39 -                                                             
+       40 -**Sequencing notes:** Depends on Fase 01 (Configuração Base do
+          - Projeto) and Fase 02 (Cadastro, Login e Gerenciamento de     
+          -Conta).                                                      
+       41 -                                                             
+       42 -**Neighbors (for boundary detection only):** Fase 02 —        
+          -Cadastro, Login e Gerenciamento de Conta (prior), Fase 04 —   
+          -Gerenciamento de Vídeos e Canal (next).                      
+       43 -                                                             
+       44 -## Decisions Index                                           
+       45 -                                                             
+       46 -| Ref | Source | Scope | Topic | Status | Decision | Libraries
+          - |                                                           
+       47 -|-----|--------|-------|-------|--------|----------|----------
+          --|                                                           
+       48 -| phase-03-videos/TD-01 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | Job Queue  
+          -Technology | decided | B (BullMQ + Redis)                     
+          -| bullmq, @nestjs/bullmq |                                   
+       49 -| phase-03-videos/TD-02 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | Upload     
+          -Strategy for Large Files | decided | A                        
+          -(Presigned URL — direct client-to-storage) | — |             
+       50 -| phase-03-videos/TD-03 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | S3 Client  
+          -Library | decided | A                                         
+          -(AWS SDK v3 — client-s3 + s3-request-presigner)               
+          -| @aws-sdk/client-s3, @aws-sdk/s3-request-presigner |        
+       51 -| phase-03-videos/TD-04 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | Video      
+          -Processing — Worker Architecture | decided | B                
+          -(Separate worker container) | —                               
+          -(FFmpeg via node:child_process) |                            
+       52 -| phase-03-videos/TD-05 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | Upload     
+          -Protocol (PUT vs Multipart) | decided | A                     
+          -(S3 Multipart Upload only) | — |                             
+       53 -| phase-03-videos/TD-06 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | Unique     
+          -Video URL Identifier | decided | A                            
+          -(NanoID-format 12-char ID via node:crypto) | — |             
+       54 -| phase-03-videos/TD-07 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | Video      
+          -Streaming Strategy | decided | A                              
+          -(Direct-from-storage via presigned GET URL) | — |            
+       55 -| phase-03-videos/TD-08 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | Video      
+          -Status Lifecycle | decided | B (draft → processing → ready \| 
+          -failed) | — |                                                
+       56 -| phase-03-videos/TD-09 |                                     
+          -technical-decisions-phase-03-videos.md | Backend | Storage Key
+          - Organization | decided | A (Single bucket, type-prefixed     
+          -keys) | — |                                                  
+       57 -                                                             
+       58 -_Source files:_                                              
+       59 -                                                             
+       60 -- `docs/decisions/technical-decisions-phase-03-videos.md`    
+       61 -                                                             
+       62 -## Capability Coverage                                       
+       63 -                                                             
+       64 -| Capability | Covered by |                                  
+       65 -|------------|------------|                                  
+       66 -| Serviço de armazenamento de arquivos (vídeos e thumbnails) |
+          - phase-03-videos/TD-03, phase-03-videos/TD-09 |              
+       67 -| Serviço de processamento em segundo plano (filas) |         
+          -phase-03-videos/TD-01 |                                      
+       68 -| Upload de vídeos com suporte a arquivos de até 10GB sem     
+          -impacto na performance | phase-03-videos/TD-02,               
+          -phase-03-videos/TD-05 |                                      
+       69 -| Pré-cadastro automático do vídeo como rascunho ao iniciar o 
+          -upload | phase-03-videos/TD-08 |                             
+       70 -| Processamento automático do vídeo após upload (extração de  
+          -duração e metadados) | phase-03-videos/TD-04 |               
+       71 -| Geração automática de thumbnail a partir de um frame do     
+          -vídeo | phase-03-videos/TD-04 |                              
+       72 -| URL única por vídeo, sem conflito com outros vídeos |       
+          -phase-03-videos/TD-06 |                                      
+       73 -| Reprodução via streaming (sem necessidade de download       
+          -completo) | phase-03-videos/TD-07 |                          
+       74 -| Download do vídeo pelo usuário | phase-03-videos/TD-07 |   
+       75 -                                                             
+       76 -## Decisions Detail                                          
+       77 -                                                             
+       78 -### phase-03-videos/TD-01                                    
+       79 -                                                             
+       80 -**Recommendation:** Option B (BullMQ + Redis) — BullMQ        
+          -on Redis is the most battle-tested Node.js queue, with        
+          -first-class NestJS integration via `@nestjs/bullmq`           
+          -(`BullModule.forRoot()`, `@Processor()`, `@InjectQueue()`)    
+          -. Redis runs as a dedicated `redis` service in `compose.yaml` 
+          -with `appendonly yes` for persistence. Option A (BullMQ 6     
+          -PostgreSQL backend) was set aside because it is very recent ( 
+          -mid-2026                                                      
+          -), its `@nestjs/bullmq` `backendFactory` integration could not
+          - be confirmed                                                 
+          -, and it would leave no dedicated queue service in Compose.   
+          -Option C (pg-boss) has a low-adoption NestJS                  
+          -community package.                                           
+       81 -                                                             
+       82 -**Libraries:** `bullmq`, `@nestjs/bullmq`                    
+       83 -                                                             
+       84 -### phase-03-videos/TD-02                                    
+       85 -                                                             
+       86 -**Recommendation:**                                           
+          -Option A (Presigned URL — direct client-to-storage) —         
+          -The API generates lightweight presigned URLs; the actual 10GB 
+          -transfer goes directly from the client to MinIO/S3, leaving   
+          -the NestJS process                                            
+          -unloaded. For files >5GB, the API orchestrates the S3         
+          -multipart upload flow.                                        
+          -Option B (tus) adds infrastructure complexity                 
+          -not justified when storage supports resumable multipart       
+          -natively. Option C is disqualified by project requirements.  
+       87 -                                                             
+       88 -**Libraries:** —                                             
+       89 -                                                             
+       90 -### phase-03-videos/TD-03                                    
+       91 -                                                             
+       92 -**Recommendation:** Option A (AWS SDK v3) —                   
+          -`@aws-sdk/client-s3` for S3 commands and                      
+          -`@aws-sdk/s3-request-presigner` for presigned URLs.           
+          -MinIO-compatible via `endpoint` + `forcePathStyle`.           
+          -`@aws-sdk/lib-storage` is not adopted — the client uploads    
+          -multipart parts directly through presigned URLs and the       
+          -worker only writes a small thumbnail with `PutObjectCommand`.
+       93 -                                                             
+       94 -**Libraries:** `@aws-sdk/client-s3`,                          
+          -`@aws-sdk/s3-request-presigner`                              
+       95 -                                                             
+       96 -### phase-03-videos/TD-04                                    
+       97 -                                                             
+       98 -**Recommendation:** Option B (Separate worker container) —    
+          -The worker runs as a dedicated `video-worker` service in      
+          -`compose.yaml`. Both services are built from the same         
+          -`nestjs-project/` codebase; the worker has its own entrypoint 
+          - that boots a NestJS application context (no HTTP server).    
+          -FFmpeg is invoked via `node:child_process` (`spawn` of        
+          -`ffprobe` for metadata JSON and `ffmpeg` for thumbnail        
+          -extraction); `fluent-ffmpeg` is not used (deprecated on npm). 
+          - The worker reads the source video from storage through a     
+          -presigned GET URL (FFmpeg reads HTTP inputs with range        
+          -requests).                                                   
+       99 -                                                             
+      100 -**Libraries:** — (FFmpeg via `node:child_process`)           
+      101 -                                                             
+      102 -### phase-03-videos/TD-05                                    
+      103 -                                                             
+      104 -**Recommendation:** Option A (S3 Multipart Upload only) — A   
+          -single, universal code path: API calls                        
+          -`CreateMultipartUpload`, returns `uploadId` + presigned URLs  
+          -per part, client uploads parts in parallel directly to        
+          -storage, reports ETags, API calls `CompleteMultipartUpload`.  
+          -Eliminates branching between simple PUT and multipart.        
+          -Supports the full 0–10GB range.                              
+      105 -                                                             
+      106 -**Libraries:** —                                             
+      107 -                                                             
+      108 -### phase-03-videos/TD-06                                    
+      109 -                                                             
+      110 -**Recommendation:** Option A (NanoID-format 12-char ID via    
+          -node:crypto) — `randomBytes(9).toString('base64url')`         
+          -produces a 12-character URL-safe identifier (72 bits of       
+          -entropy, no padding). The `nanoid` package is not used        
+          -because current releases are ESM-only while the backend is    
+          -CommonJS. Uniqueness guaranteed by `UNIQUE` DB constraint +   
+          -regenerate-and-retry on collision. The internal PK stays      
+          -UUID; this short ID is only the public URL identifier.       
+      111 -                                                             
+      112 -**Libraries:** —                                             
+      113 -                                                             
+      114 -### phase-03-videos/TD-07                                    
+      115 -                                                             
+      116 -**Recommendation:** Option A (Direct-from-storage via         
+          -presigned GET URL) — The API generates a time-limited         
+          -presigned GET URL. The `<video>` element or download link     
+          -points directly to MinIO/S3, which natively handles `Range`   
+          -requests and `206 Partial Content`. Zero API load during      
+          -streaming/download. Access control is enforced at URL         
+          -generation time.                                             
+      117 -                                                             
+      118 -**Libraries:** —                                             
+      119 -                                                             
+      120 -### phase-03-videos/TD-08                                    
+      121 -                                                             
+      122 -**Recommendation:** Option B (draft → processing → ready |    
+          -failed) — The presigned URL upload model means the API has no 
+          - visibility into upload progress, so an `uploading` state is  
+          -not meaningful. Four states: `draft` (upload period),         
+          -`processing` (job executing), `ready` (terminal success),     
+          -`failed` (enables retry). Stale drafts cleaned by a periodic  
+          -job with configurable TTL.                                   
+      123 -                                                             
+      124 -**Libraries:** —                                             
+      125 -                                                             
+      126 -### phase-03-videos/TD-09                                    
+      127 -                                                             
+      128 -**Recommendation:** Option A (Single bucket, type-prefixed    
+          -keys) — One bucket (e.g., `streamtube`). Keys:                
+          -`videos/{videoId}/original.{ext}` and                         
+          -`videos/{videoId}/thumbnail.jpg`. Prefix-based listing and    
+          -bulk deletion. Naturally extends for future transcoded        
+          -versions.                                                    
+      129 -                                                             
+      130 -**Libraries:** —                                             
+      131 -                                                             
+      132 -## Correlated Ad-Hoc Decisions                               
+      133 -                                                             
+      134 -The following ad-hoc decision documents (not scoped to a      
+          -specific phase) are relevant to Phase 03 implementation:     
+      135 -                                                             
+      136 -| Document | Relevance | Rationale |                         
+      137 -|----------|-----------|-----------|                         
+      138 -| `technical-decisions-openapi-docs-nestjs.md` | HIGH | Phase 
+          - 03 adds new video endpoints (upload initiation, upload       
+          -completion, streaming URL generation, video detail). These    
+          -endpoints must be documented with `@nestjs/swagger`           
+          -decorators following the patterns established in this TD. The 
+          - exported `openapi.json` artifact will include the new video  
+          -resource schema. |                                           
+      139 -| `technical-decisions-next-frontend-openapi-typing.md` |     
+          -MEDIUM-HIGH | The OpenAPI codegen pipeline established in     
+          -this TD will consume the video endpoint schemas added in      
+          -Phase 03. While the frontend is not in Phase 03 scope, the    
+          -API response DTOs and endpoint decorators must be compatible  
+          -with downstream codegen. |                                   
+      140 -                                                             
+      141 -## Inherited Decisions Detail                                
+      142 -                                                             
+      143 -### phase-01-configuracao-base/TD-01                         
+      144 -                                                             
+      145 -**Recommendation:** Option A (@nestjs/config) — Official,     
+          -core-team-maintained, guaranteed NestJS 11 compatibility. The 
+          - `registerAs()` factory pattern solves the TypeORM CLI        
+          -sharing problem.                                             
+      146 -                                                             
+      147 -**Libraries:** `@nestjs/config@^4.x`                         
+      148 -                                                             
+      149 -### phase-01-configuracao-base/TD-02                         
+      150 -                                                             
+      151 -**Recommendation:** Option A (Joi) — First-class integration  
+          -with `@nestjs/config` via `validationSchema`, zero custom     
+          -wiring, native string-to-number coercion.                    
+      152 -                                                             
+      153 -**Libraries:** `joi@^17.x`                                   
+      154 -                                                             
+      155 -### phase-01-configuracao-base/TD-03                         
+      156 -                                                             
+      157 -**Recommendation:** Option B (Namespaced/grouped with         
+          -registerAs) — Clear file boundaries per domain, typed         
+          -injection via `ConfigType<typeof xxxConfig>`, natural         
+          -scalability. The `registerAs()` factory is dual-purpose: DI   
+          -token + plain importable function.                           
+      158 -                                                             
+      159 -**Libraries:** —                                             
+      160 -                                                             
+      161 -### phase-01-configuracao-base/TD-04                         
+      162 -                                                             
+      163 -**Recommendation:** Option A (Shared registerAs factory) —    
+          -`data-source.ts` imports the factory, calls                   
+          -`dotenv.config()`, then calls the factory. Zero duplication,  
+          -minimal code, no extra abstraction.                          
+      164 -                                                             
+      165 -**Libraries:** `dotenv` (transitive via `@nestjs/config`)    
+      166 -                                                             
+      167 -### phase-02-auth/TD-01                                      
+      168 -                                                             
+      169 -**Recommendation:** Argon2id — OWASP-recommended. Native      
+          -build dependency is a one-time Docker setup cost.            
+      170 -                                                             
+      171 -**Libraries:** `argon2@^0.41.x`                              
+      172 -                                                             
+      173 -### phase-02-auth/TD-02                                      
+      174 -                                                             
+      175 -**Recommendation:** Custom guards with @nestjs/jwt only —     
+          -kept the dependency surface smaller than @nestjs/passport;    
+          -social login is not on the near-term roadmap.                
+      176 -                                                             
+      177 -**Libraries:** `@nestjs/jwt@^11.0.0`                         
+      178 -                                                             
+      179 -### phase-02-auth/TD-03                                      
+      180 -                                                             
+      181 -**Recommendation:** Option A (Refresh Token Rotation) —       
+          -Strongest security model with automatic theft detection. DB   
+          -write overhead is acceptable.                                
+      182 -                                                             
+      183 -**Libraries:** —                                             
+      184 -                                                             
+      185 -### phase-02-auth/TD-04                                      
+      186 -                                                             
+      187 -**Recommendation:** Option B (Random Opaque Tokens in DB) —   
+          -Revocability is important; the DB table is trivial to         
+          -implement.                                                   
+      188 -                                                             
+      189 -**Libraries:** —                                             
+      190 -                                                             
+      191 -### phase-02-auth/TD-05                                      
+      192 -                                                             
+      193 -**Recommendation:** Option A (@nestjs-modules/mailer) — Best  
+          -NestJS integration, SMTP-based, works with Mailpit for local  
+          -dev.                                                         
+      194 -                                                             
+      195 -**Libraries:** `@nestjs-modules/mailer@^2.x`,                 
+          -`handlebars@^4.x`                                            
+      196 -                                                             
+      197 -### phase-02-auth/TD-06                                      
+      198 -                                                             
+      199 -**Recommendation:** Option A (class-validator +               
+          -class-transformer) — Documented NestJS approach,              
+          -decorator-based, aligns with TypeORM entities.               
+      200 -                                                             
+      201 -**Libraries:** `class-validator@^0.14.x`,                     
+          -`class-transformer@^0.5.x`                                   
+      202 -                                                             
+      203 -### phase-02-auth/TD-07                                      
+      204 -                                                             
+      205 -**Recommendation:** Option A (Custom Domain Exception Filter) 
+          - — Machine-readable error codes, `{ statusCode, error,        
+          -message }` format with domain codes.                         
+      206 -                                                             
+      207 -**Libraries:** —                                             
+      208 -                                                             
+      209 -### phase-02-auth/TD-08                                      
+      210 -                                                             
+      211 -**Recommendation:** Option A (@nestjs/throttler) — Native     
+          -NestJS guard integration, module-level `APP_GUARD`, in-memory 
+          - storage sufficient.                                         
+      212 -                                                             
+      213 -**Libraries:** `@nestjs/throttler@^6.x`                      
+      214 -                                                             
+      215 -### phase-02-auth/TD-09                                      
+      216 -                                                             
+      217 -**Recommendation:** JWT for refresh tokens (diverged from     
+          -opaque recommendation) — reuses access-token                  
+          -signing/verification infrastructure.                         
+      218 -                                                             
+      219 -**Libraries:** `@nestjs/jwt@^11.0.0`                         
+      220 -                                                             
+      221 -### phase-02-auth/TD-10                                      
+      222 -                                                             
+      223 -**Recommendation:** Option A (`[a-z0-9_]` + `user_<random>`   
+          -fallback) — strict allowlist, no extra dependencies,          
+          -`user_<random>` fallback for extreme prefixes.               
+      224 -                                                             
+      225 -**Libraries:** —                                             
+      226 -                                                             
+      227 -### openapi-docs-nestjs/TD-01                                
+      228 -                                                             
+      229 -**Recommendation:** @nestjs/swagger — official NestJS         
+          -integration, decorator-based, generates OpenAPI 3.x spec from 
+          - code. Phase 03 endpoints must use `@ApiTags()`,              
+          -`@ApiOperation()`, `@ApiResponse()`, and DTO decorators for   
+          -video resources.                                             
+      230 -                                                             
+      231 -**Libraries:** `@nestjs/swagger@^11.x`                       
+      232 -                                                             
+      233 -### openapi-docs-nestjs/TD-02                                
+      234 -                                                             
+      235 -**Recommendation:** Runtime UI + exported openapi.json —      
+          -Swagger UI served at `/api/docs` (dev/staging),               
+          -`openapi.json` exported as a build artifact for downstream    
+          -consumers (frontend codegen).                                
+      236 -                                                             
+      237 -**Libraries:** —                                             
+      238 -                                                             
+      239 -### openapi-docs-nestjs/TD-03                                
+      240 -                                                             
+      241 -**Recommendation:** Dev/staging only — Swagger UI and spec    
+          -endpoint disabled in production via environment flag.        
+      242 -                                                             
+      243 -**Libraries:** —                                             
+      244 -                                                             
+      245 -## Inherited Conventions                                     
+      246 -                                                             
+      247 -- Backend config uses `@nestjs/config` with namespaced        
+          -`registerAs(name, () => ({...}))` factories — one file per    
+          -domain in `src/config/`. Phase 03 adds                        
+          -`src/config/storage.config.ts` and                            
+          -`src/config/queue.config.ts`. _(from phase 01)_              
+      248 -- Env variables are validated by a Joi schema in              
+          -`src/config/env.validation.ts`, passed to                     
+          -`ConfigModule.forRoot({ validationSchema, validationOptions:  
+          -{ allowUnknown: true, abortEarly: false } })`. Phase 03 adds  
+          -storage (S3 endpoint, bucket, credentials) and Redis (host,   
+          -port) env vars to the schema. _(from phase 01)_              
+      249 -- Config is injected into modules via `ConfigType<typeof      
+          -xxxConfig>` and `@Inject(xxxConfig.KEY)`; the same factory is 
+          - importable as a plain function for non-DI contexts. _(from   
+          -phase 01)_                                                   
+      250 -- `data-source.ts` loads `.env` via `import 'dotenv/config'`  
+          -at the top, then imports `databaseConfig` and calls it as a   
+          -plain function. _(from phase 01)_                            
+      251 -- Database connection parameters sourced from a single        
+          -`databaseConfig` factory — never duplicated. _(from phase     
+          -01)_                                                         
+      252 -- `TypeOrmModule.forRootAsync` with `imports:                 
+          -[ConfigModule]`, `inject: [databaseConfig.KEY]`, `useFactory` 
+          - returning options including `autoLoadEntities: true`,        
+          -`synchronize: false`. _(from phase 01)_                      
+      253 -- Auth uses custom guards with `@nestjs/jwt` (no              
+          -@nestjs/passport). Phase 03 upload endpoints require          
+          -authentication (user must be logged in to upload); use the    
+          -existing JWT guard. _(from phase 02)_                        
+      254 -- Domain exceptions mapped to HTTP responses by a custom      
+          -exception filter. Phase 03 introduces new domain exceptions   
+          -(e.g., `VideoNotFound`, `UploadNotCompleted`,                 
+          -`ProcessingFailed`). _(from phase 02)_                       
+      255 -- Request validation via `class-validator` +                  
+          -`class-transformer` with `ValidationPipe`. Phase 03 DTOs for  
+          -upload initiation follow the same pattern. _(from phase 02)_ 
+      256 -- Rate limiting via `@nestjs/throttler`. Upload endpoints may 
+          - need custom throttle configuration. _(from phase 02)_       
+      257 -- All endpoints documented with `@nestjs/swagger` decorators  
+          -(`@ApiTags()`, `@ApiOperation()`, `@ApiResponse()`). Phase 03 
+          - video endpoints must follow this convention. _(from          
+          -openapi-docs-nestjs)_                                        
+      258 -                                                             
+      259 -## Inherited Deferred Capabilities                           
+      260 -                                                             
+      261 -| Capability | Source phase | Status | Rationale |           
+      262 -|------------|-------------|--------|-----------|            
+      263 -| Telas de cadastro, login, confirmação de conta e            
+          -recuperação de senha | phase-02-auth | deferred |             
+          -`next-frontend/` was not initialized in phase 02; UI surfaces 
+          - start in a later phase. |                                   
+      264 -                                                             
+      265 -## Non-UI / Deferred Capabilities                            
+      266 -                                                             
+      267 -| Capability | Status | Rationale | TD refs |                
+      268 -|------------|--------|-----------|---------|                
+      269 -| Frontend video interface (upload UI, player, progress) |    
+          -deferred | Phase 03 is explicitly a backend-only deliverable  
+          -per `objetivo_desafio.md`. Frontend video interface deferred  
+          -to future phases. | — |                                      
+      270 -| Video title, description, category editing | deferred |     
+          -Phase 04 scope — Gerenciamento de Vídeos e Canal. | — |      
+      271 -| Video visibility (público/unlisted) | deferred | Phase 04   
+          -scope. | — |                                                 
+      272 -| Custom thumbnail upload | deferred | Phase 04 scope —       
+          -thumbnail editing is part of video management. | — |         
+      273 -| Draft → publication workflow | deferred | Phase 04 scope —  
+          -full publication flow. Phase 03 only creates drafts and       
+          -transitions to ready/failed. | — |                           
+      274 -                                                             
+      275 -## Testing Requirements                                      
+      276 -                                                             
+      277 -Refer to the `testing-guide-nestjs-project` Skill for layer   
+          -requirements per artifact type in `nestjs-project/`.         
+      278 -                                                             
+      279 -Phase 03 introduces several new artifact categories with      
+          -specific testing considerations:                             
+      280 -                                                             
+      281 -**New artifact types and their test layers:**                
+      282 -                                                             
+      283 -| Artifact | Test layer | Notes |                            
+      284 -|----------|------------|-------|                            
+      285 -| Video entity (`video.entity.ts`) | Integration (real DB) |  
+          -Constraints, defaults, `select: false` fields, unique index   
+          -on short ID, status enum column |                            
+      286 -| VideosService (upload orchestration, status transitions) |  
+          -Unit (branch logic, mock repos) + Integration (DB contract) | 
+          - Service has branching: multipart initiation, completion      
+          -validation, status transitions |                             
+      287 -| StorageService (S3/MinIO client wrapper) | Integration      
+          -(real MinIO) | Test against MinIO container in compose;       
+          -presigned URL generation, multipart orchestration |          
+      288 -| VideosController | E2E only | Upload initiation, upload     
+          -completion, streaming URL, video detail endpoints |          
+      289 -| Video DTOs | E2E (validation wiring) | One test per         
+          -endpoint proving `ValidationPipe` rejects bad input |        
+      290 -| VideosModule | Unit (compilation) | DI wiring with          
+          -`BullModule.registerQueue()`, `TypeOrmModule.forFeature()`,   
+          -storage config |                                             
+      291 -| Queue producer (enqueue job on upload complete) |           
+          -Integration (real Redis) | Assert job enqueued with correct   
+          -data via `queue.getJobs(['waiting'])` |                      
+      292 -| Queue processor (`@Processor`, worker) | Unit (mock deps) + 
+          - Integration (real DB/storage) | Test `process()` method      
+          -directly; assert DB status update and thumbnail upload |     
+      293 -| Config files (`storage.config.ts`, `queue.config.ts`) |     
+          -Unit (module compilation) | Module fails to compile with      
+          -missing env vars |                                           
+      294 -                                                             
+      295 -**External system strategies for Phase 03:**                 
+      296 -                                                             
+      297 -| System | Strategy | Service in compose |                   
+      298 -|--------|----------|--------------------|                   
+      299 -| PostgreSQL | Real (Docker) — same as prior phases | `db` | 
+      300 -| Object Storage (MinIO) | Real (Docker) — MinIO container    
+          -added in Phase 03 | `minio` |                                
+      301 -| Message Queue (Redis) | Real (Docker) — Redis container     
+          -added in Phase 03 | `redis` |                                
+      302 -| Email (Mailpit) | Real SMTP capture — same as prior phases  
+          -| `mailpit` |                                                
+      303 -                                                             
+      304 -**Queue testing pattern (BullMQ + Redis):**                  
+      305 -- Use `BullModule.forRoot({ connection: { host:               
+          -process.env.REDIS_HOST ?? 'redis', port:                      
+          -Number(process.env.REDIS_PORT ?? 6379) } })` in test modules  
+          -— the fallback is the Compose service name, never `localhost` 
+          - (root `CLAUDE.md` → Docker Networking)                      
+      306 -- Assert job enqueued: `queue.getJobs(['waiting'])` returns   
+          -expected job data                                            
+      307 -- Test processor's `process()` method directly — do not test  
+          -BullMQ's dispatch mechanism                                  
+      308 -- Clean queues between tests: `queue.obliterate({ force: true 
+          - })` or `queue.drain()`                                      
+      309 -                                                             
+      310 -**Storage testing pattern (MinIO):**                         
+      311 -- MinIO runs as a Docker service with S3-compatible API      
+      312 -- Integration tests use real MinIO — no filesystem fallback   
+          -in tests                                                     
+      313 -- Test presigned URL generation: assert URL is valid and      
+          -accessible                                                   
+      314 -- Test multipart flow: `CreateMultipartUpload` → `UploadPart` 
+          - → `CompleteMultipartUpload`                                 
+      315 -- Clean test objects in `afterAll`                           
+      316 -                                                             
+      317 -**Worker testing pattern (FFmpeg via child_process):**       
+      318 -- Unit tests: mock `child_process.spawn` to return controlled 
+          - stdout/stderr                                               
+      319 -- Integration tests: use a small test video fixture (few      
+          -seconds, <1MB) to run real `ffprobe`/`ffmpeg`                
+      320 -- Assert: duration extracted correctly, thumbnail JPEG        
+          -created and uploaded to storage, video status updated to      
+          -`ready`                                                      
+      321 -- Assert failure path: invalid video → status updated to      
+          -`failed`                                                     
+      322 -- Tests run inside the `nestjs-api` container                 
+          -(`nestjs-project/CLAUDE.md` → Commands), so integration tests 
+          - that execute real `ffprobe`/`ffmpeg` require the FFmpeg      
+          -binaries in that container's image as well as in the          
+          -`video-worker` image                                         
+      323 -                                                             
+      324 -**End-to-end flow (acceptance evidence):**                   
+      325 -- `objetivo_desafio.md` requires queue, worker and storage to 
+          - be exercised by tests against the real Compose               
+          -infrastructure ("Fila, worker e storage precisam subir no     
+          -Compose e ser exercitados pelos testes") and lists "Streaming 
+          - funcionando (sem exigir download completo) e download do     
+          -vídeo disponível" as an acceptance criterion                 
+      326 -- At least one `*.e2e-spec.ts` covers the full cycle:         
+          -initiate upload (draft) → upload parts to MinIO via presigned 
+          - URLs → complete upload (processing) → poll until the worker  
+          -sets `ready` → request the streaming URL with a `Range`       
+          -header and assert `206 Partial Content` → request the         
+          -download URL and assert an attachment response               
+        1 +---                                                           
+        2 +kind: phase                                                   
+        3 +name: phase-03-videos                                         
+        4 +sources_mtime:                                                
+        5 +  docs/project-plan.md: "2026-11-11T22:46:19"                 
+        6 +  docs/decisions/technical-decisions-phase-03-videos.md:      
+          +"2026-11-13T12:26:58"                                         
+        7 +  docs/decisions/technical-decisions-openapi-docs-nestjs      
+          +.md: "2026-11-11T22:46:19"                                    
+        8 +  docs/phases/phase-01-configuracao-base/context.md:          
+          +"2026-11-11T22:46:19"                                         
+        9 +  docs/phases/phase-02-auth/context.md: "2026-11-11T22:46:19" 
+       10 +  docs/phases/phase-02-auth-frontend                          
+          +/context.md: "2026-11-11T22:46:19"                            
+       11 +  .claude/skills/testing-guide-nestjs-project/SKILL.md:       
+          +"2026-11-11T22:46:19"                                         
+       12 +---                                                           
+       13 +                                                              
+       14 +# phase-03-videos — Context                                   
+       15 +                                                              
+       16 +## Scope                                                      
+       17 +                                                              
+       18 +**Phase name:** Fase 03 — Upload e Processamento de Vídeos    
+       19 +                                                              
+       20 +**Capabilities**                                              
+       21 +                                                              
+       22 +- Serviço de armazenamento de arquivos (vídeos e thumbnails)  
+       23 +- Serviço de processamento em segundo plano (filas)           
+       24 +- Upload de vídeos com suporte a arquivos de até 10GB sem     
+          +impacto na performance                                        
+       25 +- Pré-cadastro automático do vídeo como rascunho ao iniciar o 
+          +upload                                                        
+       26 +- Processamento automático do vídeo após upload (extração de  
+          +duração e metadados)                                          
+       27 +- Geração automática de thumbnail a partir de um frame do     
+          +vídeo                                                         
+       28 +- URL única por vídeo, sem conflito com outros vídeos         
+       29 +- Reprodução via streaming (sem necessidade de download       
+          +completo)                                                     
+       30 +- Download do vídeo pelo usuário                              
+       31 +                                                              
+       32 +**Out of scope:** Categorias de vídeo; edição de              
+          +título, descrição, categoria e thumbnail customizada;         
+          +visibilidade (público/unlisted); fluxo de rascunho para       
+          + publicação; painel de gerenciamento de vídeos do canal;      
+          +edição de informações do canal;                               
+          +página pública do canal — all deferred to Phase 04. Frontend  
+          +video interface — Phase 03 is explicitly a backend-only       
+          +deliverable per `objetivo_desafio.md`.                        
+       33 +                                                              
+       34 +**Deliverables:** upload de até 10GB funcional, processamento 
+          +automático do vídeo, streaming funcionando, URLs únicas       
+          +geradas.                                                      
+       35 +                                                              
+       36 +**Affected subprojects:** `nestjs-project/`                   
+       37 +                                                              
+       38 +**Deferred subprojects:** `next-frontend/` — no frontend video
+          + interface in this phase.                                     
+       39 +                                                              
+       40 +**Sequencing notes:** Depends on Fase 01 (Configuração Base do
+          + Projeto) and Fase 02 (Cadastro, Login e Gerenciamento de     
+          +Conta).                                                       
+       41 +                                                              
+       42 +**Neighbors (for boundary detection only):** Fase 02 —        
+          +Cadastro, Login e Gerenciamento de Conta (prior), Fase 04 —   
+          +Gerenciamento de Vídeos e Canal (next).                       
+       43 +                                                              
+       44 +## Decisions Index                                            
+       45 +                                                              
+       46 +| Ref | Source | Scope | Topic | Status | Decision | Libraries
+          + |                                                            
+       47 +|-----|--------|-------|-------|--------|----------|----------
+          +-|                                                            
+       48 +| phase-03-videos/TD-01 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | Job Queue  
+          +Technology | decided | B | bullmq, @nestjs/bullmq |           
+       49 +| phase-03-videos/TD-02 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | Upload     
+          +Strategy for Large Files (up to 10GB) | decided | A | — |     
+       50 +| phase-03-videos/TD-03 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | S3 Client  
+          +Library | decided | A                                         
+          +| @aws-sdk/client-s3, @aws-sdk/s3-request-presigner |         
+       51 +| phase-03-videos/TD-04 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | Video      
+          +Processing — Worker Architecture and FFmpeg Integration       
+          +| decided | B | — |                                           
+       52 +| phase-03-videos/TD-05 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | Upload     
+          +Protocol — Simple Presigned PUT vs. S3 Multipart Upload       
+          +| decided | A | — |                                           
+       53 +| phase-03-videos/TD-06 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | Unique     
+          +Video URL Identifier | decided | A | — |                      
+       54 +| phase-03-videos/TD-07 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | Video      
+          +Streaming Strategy | decided | A | — |                        
+       55 +| phase-03-videos/TD-08 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | Video      
+          +Status Lifecycle and Failure Handling | decided | B | — |     
+       56 +| phase-03-videos/TD-09 |                                     
+          +technical-decisions-phase-03-videos.md | Backend | Storage Key
+          + Organization (Bucket and Object Key Structure) | decided | A 
+          +| — |                                                         
+       57 +                                                              
+       58 +_Source files:_                                               
+       59 +                                                              
+       60 +- `docs/decisions/technical-decisions-phase-03-videos.md`     
+       61 +                                                              
+       62 +## Capability Coverage                                        
+       63 +                                                              
+       64 +| Capability | Covered by |                                   
+       65 +|------------|------------|                                   
+       66 +| Serviço de armazenamento de arquivos (vídeos e thumbnails) |
+          + phase-03-videos/TD-03, phase-03-videos/TD-09 |               
+       67 +| Serviço de processamento em segundo plano (filas) |         
+          +phase-03-videos/TD-01 |                                       
+       68 +| Upload de vídeos com suporte a arquivos de até 10GB sem     
+          +impacto na performance | phase-03-videos/TD-02,               
+          +phase-03-videos/TD-05 |                                       
+       69 +| Pré-cadastro automático do vídeo como rascunho ao iniciar o 
+          +upload | phase-03-videos/TD-08 |                              
+       70 +| Processamento automático do vídeo após upload (extração de  
+          +duração e metadados) | phase-03-videos/TD-04 |                
+       71 +| Geração automática de thumbnail a partir de um frame do     
+          +vídeo | phase-03-videos/TD-04 |                               
+       72 +| URL única por vídeo, sem conflito com outros vídeos |       
+          +phase-03-videos/TD-06 |                                       
+       73 +| Reprodução via streaming (sem necessidade de download       
+          +completo) | phase-03-videos/TD-07 |                           
+       74 +| Download do vídeo pelo usuário | phase-03-videos/TD-07 |    
+       75 +                                                              
+       76 +## Decisions Detail                                           
+       77 +                                                              
+       78 +### phase-03-videos/TD-01                                     
+       79 +                                                              
+       80 +**Recommendation:** BullMQ                                    
+          +on Redis is the most battle-tested Node.js queue, with        
+          +first-class NestJS integration via `@nestjs/bullmq`           
+          +(`BullModule.forRoot()`, `@Processor()`, `@InjectQueue()`)    
+          + and the broadest official documentation                      
+          +. Redis runs as a dedicated `redis` service in `compose.yaml` 
+          +(with `appendonly yes` so queued jobs survive a container     
+          +restart),                                                     
+          +which makes the queue an explicit infrastructure component —  
+          +the Phase 03 acceptance criteria require object storage, queue
+          + and worker to come up via Docker Compose alongside the       
+          +backend. Option A was set aside because the                   
+          +BullMQ 6 PostgreSQL backend is very recent (                  
+          +`bullmq` 6.0.0 published on npm on 2026-07-30                 
+          +), its `@nestjs/bullmq` `backendFactory` integration could not
+          + be confirmed in official documentation                       
+          +, and it would leave no dedicated queue service in Compose.   
+          +Option C's NestJS integration is a low-adoption               
+          +community package.                                            
+       81 +                                                              
+       82 +**Libraries:** bullmq, @nestjs/bullmq                         
+       83 +                                                              
+       84 +### phase-03-videos/TD-02                                     
+       85 +                                                              
+       86 +**Recommendation:**                                           
+          +The API generates lightweight presigned URLs; the actual 10GB 
+          +transfer goes directly from the client to MinIO/S3, leaving   
+          +the NestJS process completely                                 
+          +unloaded. For files >5GB, the API orchestrates the S3         
+          +multipart upload flow                                         
+          + (generate upload ID + presigned URLs per part), and the      
+          +client uploads parts in parallel directly to storage.         
+          +This is the standard pattern used by YouTube, Vimeo, and every
+          + production video platform.                                   
+          +Option B (tus) adds infrastructure complexity that is         
+          +not justified when the storage already                        
+          +supports resumable multipart uploads natively. Option C is    
+          +explicitly disqualified by the project requirements.          
+       87 +                                                              
+       88 +**Libraries:** —                                              
+       89 +                                                              
+       90 +**Revisions:**                                                
+       91 +- 2026-11-13 — Presigned URLs handed to clients are signed    
+          +against a separate public storage endpoint                    
+          +(`S3_PUBLIC_ENDPOINT`, e.g. `http://localhost:9000` in local  
+          +dev), while server-side S3 calls (API and worker) use the     
+          +internal Compose endpoint (`S3_ENDPOINT=http://minio:9000`).  
+          +Tests that run inside the `nestjs-api` container set          
+          +`S3_PUBLIC_ENDPOINT` to the internal endpoint so they can     
+          +reach the URLs. Rationale: the S3 signature covers the host,  
+          +so a URL signed for `minio:9000` is unusable outside the      
+          +Docker network; this is the only place a non-service host     
+          +appears and it is never used for container-to-container       
+          +traffic (root `CLAUDE.md` → Docker Networking).               
+       92 +- 2026-11-13 — The bucket CORS policy allows                  
+          +`PUT`/`GET`/`HEAD` from the client origin and exposes the     
+          +`ETag` response header. Rationale: the client must read each  
+          +part's `ETag` to complete the multipart upload.               
+       93 +                                                              
+       94 +### phase-03-videos/TD-03                                     
+       95 +                                                              
+       96 +**Recommendation:** The project runs MinIO in dev and targets 
+          + S3 in production. AWS SDK v3 is the canonical S3 client,     
+          +with the broadest documentation, TypeScript support, and      
+          +feature coverage, and is MinIO-compatible via `endpoint` +    
+          +`forcePathStyle`. Only two packages are adopted:              
+          +`@aws-sdk/client-s3` (multipart commands                      
+          +`CreateMultipartUpload` / `UploadPart` /                      
+          +`CompleteMultipartUpload` / `AbortMultipartUpload`, plus      
+          +`HeadObject`, `PutObject`, `GetObject`) and                   
+          +`@aws-sdk/s3-request-presigner` (`getSignedUrl()` for part    
+          +uploads, streaming and download). _Adjusted during review     
+          +(2026-11-12):_ `@aws-sdk/lib-storage` is not adopted — the    
+          +client uploads multipart parts directly through presigned     
+          +URLs and the worker only writes a small thumbnail with        
+          +`PutObjectCommand`, so a managed server-side upload helper    
+          +has no use. Option B locks the project into a MinIO-specific  
+          +client that may lack features when deploying to AWS. Option C 
+          + lacks multipart upload support critical for 10GB files.      
+       97 +                                                              
+       98 +**Libraries:** @aws-sdk/client-s3,                            
+          +@aws-sdk/s3-request-presigner                                 
+       99 +                                                              
+      100 +### phase-03-videos/TD-04                                     
+      101 +                                                              
+      102 +**Recommendation:** The worker runs as a dedicated            
+          +`video-worker` service in `compose.yaml`, matching the        
+          +architecture diagram (Video Worker as its own container) and  
+          +the Phase 03 acceptance criteria, which require the worker to 
+          + come up via Docker Compose alongside the backend. The        
+          +shared-code concern is resolved without duplication: both     
+          +services are built from the same `nestjs-project/` codebase,  
+          +and the worker has its own entrypoint that boots a NestJS     
+          +application context (no HTTP server) registering only what it 
+          + needs — the `@Processor()` for the video-processing queue,   
+          +the storage service and video persistence — while the API     
+          +process does not register the processor. The image used by    
+          +the worker includes the FFmpeg binaries (`ffmpeg`,            
+          +`ffprobe`). FFmpeg is invoked directly through                
+          +`node:child_process` (`spawn` of `ffprobe` to read duration   
+          +and stream metadata as JSON, and of `ffmpeg` to extract a     
+          +single frame as the JPEG thumbnail); `fluent-ffmpeg` is not   
+          +used because the package is deprecated on npm ("Package no    
+          +longer supported"). The worker reads the source video from    
+          +storage through a presigned GET URL (FFmpeg reads HTTP inputs 
+          + using range requests), avoiding a full local copy of files   
+          +up to 10GB. Options A and C were set aside because they leave 
+          + no worker service in Compose.                                
+      103 +                                                              
+      104 +**Libraries:** —                                              
+      105 +                                                              
+      106 +**Revisions:**                                                
+      107 +- 2026-11-13 — The thumbnail is the frame at 10% of the       
+          +extracted duration (first frame when the duration is unknown  
+          +or under 1 second), saved as JPEG. Rationale: the opening     
+          +frames of videos are often black or title cards; validation   
+          +flagged the frame-selection strategy as unspecified.          
+      108 +- 2026-11-13 — The FFmpeg binaries (`ffmpeg`, `ffprobe`) are  
+          +also installed in the `nestjs-api` image, not only in the     
+          +`video-worker` image. Rationale: every test runs inside the   
+          +`nestjs-api` container (`nestjs-project/CLAUDE.md` →          
+          +Commands), and processor integration tests execute real       
+          +FFmpeg.                                                       
+      109 +                                                              
+      110 +### phase-03-videos/TD-05                                     
+      111 +                                                              
+      112 +**Recommendation:** A single, universal code path eliminates  
+          +branching and ensures 10GB support from day one. The          
+          +multipart flow with parallel part uploads is strictly         
+          +superior in throughput and resilience for any file over       
+          +~100MB, which is the typical video file range. The            
+          +client-side complexity is bounded and well-documented (S3     
+          +multipart presigned is a standard pattern). Option B's dual   
+          +path adds maintenance cost for a marginal simplicity win on   
+          +small files that is rarely exercised (video files are         
+          +typically >100MB).                                            
+      113 +                                                              
+      114 +**Libraries:** —                                              
+      115 +                                                              
+      116 +**Revisions:**                                                
+      117 +- 2026-11-13 — Upload limits and contract: fixed part size of 
+          + 100 MiB (last part may be smaller); maximum file size of 10  
+          +GiB (10 × 1024³ bytes), validated at initiation against the   
+          +declared size and again at completion against the stored      
+          +object size (`HeadObject` `ContentLength`); accepted content  
+          +types `video/mp4`, `video/webm`, `video/quicktime`,           
+          +`video/x-matroska`. Part URLs expire after 1 hour and the     
+          +owner can request fresh URLs for specific part numbers while  
+          +the video is `draft`; the owner can abort an in-progress      
+          +upload (`AbortMultipartUpload`). Rationale: the 10GB limit    
+          +comes from the project plan, and the S3 limits (5 MiB minimum 
+          + part, 10,000 parts maximum) are satisfied with ~103 parts at 
+          + 10 GiB; validation found these parameters unspecified.       
+      118 +                                                              
+      119 +### phase-03-videos/TD-06                                     
+      120 +                                                              
+      121 +**Recommendation:** The use case is a YouTube-like URL        
+          +identifier: short, URL-safe, shareable, non-sequential.       
+          +_Adjusted during review (2026-11-12):_ the identifier uses    
+          +the NanoID URL-safe alphabet (`A-Za-z0-9_-`) with a fixed     
+          +length of **12 characters**, generated with Node's built-in   
+          +`node:crypto` (`randomBytes(9).toString('base64url')`, 72     
+          +bits of entropy, no padding) instead of the `nanoid` package  
+          +— current `nanoid` releases are ESM-only (`"type":            
+          +"module"`), while the backend compiles to CommonJS and runs   
+          +tests under ts-jest. This also removes a dependency.          
+          +Uniqueness is guaranteed by a `UNIQUE` constraint on the      
+          +column plus regenerate-and-retry on collision. YouTube uses   
+          +an 11-character base64 identifier, so 12 characters keeps the 
+          + same aesthetic. The internal primary key stays a UUID; the   
+          +short ID is only the public URL identifier. CUID2's           
+          +distributed anti-collision guarantees add unnecessary         
+          +complexity for a single-Postgres deployment. UUID is too long 
+          + for user-facing URLs.                                        
+      122 +                                                              
+      123 +**Libraries:** —                                              
+      124 +                                                              
+      125 +### phase-03-videos/TD-07                                     
+      126 +                                                              
+      127 +**Recommendation:** Same architectural principle as TD-02:    
+          +offload byte transfer from the API. S3/MinIO handle range     
+          +requests natively, so HTTP streaming "just works" when the    
+          +`<video>` element points at the presigned URL. Access control 
+          + is enforced at URL generation time (API checks auth + video  
+          +status before issuing the URL). For Phase 03, all videos are  
+          +viewable (draft status videos are only viewable by the owner, 
+          + enforced at the URL generation endpoint). Option B           
+          +reintroduces the problem TD-02 solved (passing large files    
+          +through the API). Option C is premature — Phase 04's          
+          +visibility feature doesn't require a proxy; short-lived       
+          +presigned URLs with DB checks suffice.                        
+      128 +                                                              
+      129 +**Libraries:** —                                              
+      130 +                                                              
+      131 +**Revisions:**                                                
+      132 +- 2026-11-13 — HTTP contract: `GET /videos/:publicId/stream`  
+          +and `GET /videos/:publicId/download` respond `302 Found` with 
+          + `Location` set to a presigned GET URL; the download URL sets 
+          + `ResponseContentDisposition: attachment`. Presigned GET URLs 
+          + expire after a configurable TTL (default 4 hours).           
+          +Rationale: a redirect lets a `<video src>` or download link   
+          +point at the API while the bytes (including `Range` requests  
+          +answered with `206 Partial Content`) flow directly from       
+          +storage.                                                      
+      133 +- 2026-11-13 — Access rules: the owner of the video's channel 
+          + can read metadata, stream and download in any status; anyone 
+          + else, including anonymous users, only when the status is     
+          +`ready`. A non-owner request for a video that is not `ready`  
+          +returns 404 (existence is not disclosed). Rationale:          
+          +anonymous viewing is a platform rule (project overview; Phase 
+          + 05), while visibility controls are Phase 04 scope.           
+      134 +                                                              
+      135 +### phase-03-videos/TD-08                                     
+      136 +                                                              
+      137 +**Recommendation:** The presigned URL upload model            
+          +(TD-02/TD-05) means the API has no visibility into upload     
+          +progress — it only knows when the upload is initiated (draft  
+          +created) and when the client confirms completion. An          
+          +`uploading` state would require polling storage to verify     
+          +progress, adding unnecessary complexity. Four states          
+          +(including `failed`) are sufficient: `draft` covers the       
+          +entire upload period, `processing` covers job execution,      
+          +`ready` is the terminal success state, and `failed` enables   
+          +retry. Stale drafts (abandoned uploads) can be cleaned by a   
+          +periodic job that deletes `draft` videos older than a         
+          +configurable TTL (e.g., 24h).                                 
+      138 +                                                              
+      139 +**Libraries:** —                                              
+      140 +                                                              
+      141 +**Revisions:**                                                
+      142 +- 2026-11-13 — Failure policy: a processing job is attempted  
+          +up to 3 times with exponential backoff (initial delay 5       
+          +seconds); the job id is the video id so completing an upload  
+          +twice cannot enqueue duplicates. Only when the final attempt  
+          +fails does the worker set the status to `failed` and store    
+          +the error message; intermediate failures keep the status      
+          +`processing`. Rationale: validation found the retry policy    
+          +unspecified, and transient storage/FFmpeg errors should not   
+          +fail a video on the first attempt.                            
+      143 +- 2026-11-13 — Automatic cleanup of stale drafts (the         
+          +periodic TTL job mentioned in the recommendation) is **out of 
+          + scope** for Phase 03; abandoned multipart uploads can be     
+          +aborted through the upload abort operation (TD-05).           
+          +Rationale: it is not a Phase 03 capability in                 
+          +`docs/project-plan.md` and would add a scheduler dependency;  
+          +it is recorded as a future task.                              
+      144 +                                                              
+      145 +### phase-03-videos/TD-09                                     
+      146 +                                                              
+      147 +**Recommendation:** Simplest infrastructure (one bucket) with 
+          + clean logical grouping via prefix. `videos/{videoId}/` as a  
+          +prefix enables listing and bulk-deleting all artifacts for a  
+          +video. Phase 03 has no differentiated access policies between 
+          + videos and thumbnails (both use presigned URLs), so separate 
+          + buckets (Option B) add infrastructure cost without benefit.  
+          +The prefix structure naturally extends for future artifacts   
+          +(e.g., `videos/{videoId}/720p.mp4`,                           
+          +`videos/{videoId}/360p.mp4` for transcoded versions).         
+      148 +                                                              
+      149 +**Libraries:** —                                              
+      150 +                                                              
+      151 +**Revisions:**                                                
+      152 +- 2026-11-13 — The `{videoId}` segment in storage keys is the 
+          + video's internal UUID primary key, not the public            
+          +12-character identifier (TD-06). Rationale: storage layout    
+          +stays independent of the public URL identifier.               
+      153 +- 2026-11-13 — The bucket (name from configuration) and its   
+          +CORS policy (TD-02 revision) are created by a one-shot        
+          +`minio-init` service in `compose.yaml` (MinIO client) that    
+          +runs after `minio` is healthy. Rationale: `docker compose up` 
+          + must yield a ready-to-use storage without manual steps.      
+      154 +                                                              
+      155 +## Inherited Decisions Detail                                 
+      156 +                                                              
+      157 +### phase-01-configuracao-base/TD-01                          
+      158 +                                                              
+      159 +**Recommendation:** @nestjs/config — Official,                
+          +core-team-maintained, guaranteed NestJS 11 compatibility. The 
+          + `registerAs()` factory pattern solves the TypeORM CLI        
+          +sharing problem: the factory function can be imported as a    
+          +plain function by `data-source.ts` while also serving as a DI 
+          + injection token inside NestJS.                               
+      160 +                                                              
+      161 +**Libraries:** `@nestjs/config@^4.x`                          
+      162 +                                                              
+      163 +### phase-01-configuracao-base/TD-02                          
+      164 +                                                              
+      165 +**Recommendation:** Joi — First-class integration with        
+          +`@nestjs/config` via `validationSchema`, requiring zero       
+          +custom wiring. Handles string-to-number coercion natively.    
+      166 +                                                              
+      167 +**Libraries:** `joi@^17.x`                                    
+      168 +                                                              
+      169 +### phase-01-configuracao-base/TD-03                          
+      170 +                                                              
+      171 +**Recommendation:** Namespaced/grouped with registerAs —      
+          +Clear file boundaries per domain, typed injection via         
+          +`ConfigType<typeof databaseConfig>`, natural scalability. The 
+          + `registerAs()` factory is dual-purpose: DI token inside      
+          +NestJS and plain importable function for `data-source.ts`.    
+      172 +                                                              
+      173 +**Libraries:** —                                              
+      174 +                                                              
+      175 +### phase-01-configuracao-base/TD-04                          
+      176 +                                                              
+      177 +**Recommendation:** Shared registerAs factory — Natural       
+          +outcome of choosing `@nestjs/config` with `registerAs`.       
+          +`data-source.ts` imports the factory, calls                   
+          +`dotenv.config()`, then calls the factory. Zero duplication,  
+          +minimal code, no extra abstraction.                           
+      178 +                                                              
+      179 +**Libraries:** `dotenv` (transitive via `@nestjs/config`)     
+      180 +                                                              
+      181 +### phase-02-auth/TD-01                                       
+      182 +                                                              
+      183 +**Recommendation:** Argon2id — OWASP-recommended. Native      
+          +build dependency is a one-time Docker setup cost.             
+      184 +                                                              
+      185 +**Libraries:** `argon2@^0.41.x`                               
+      186 +                                                              
+      187 +### phase-02-auth/TD-02                                       
+      188 +                                                              
+      189 +**Recommendation:** Custom guards with @nestjs/jwt only —     
+          +kept the dependency surface smaller than @nestjs/passport;    
+          +social login is not on the near-term roadmap.                 
+      190 +                                                              
+      191 +**Libraries:** `@nestjs/jwt@^11.0.0`                          
+      192 +                                                              
+      193 +### phase-02-auth/TD-03                                       
+      194 +                                                              
+      195 +**Recommendation:** Refresh Token Rotation — Strongest        
+          +security model with automatic theft detection. DB write       
+          +overhead is acceptable.                                       
+      196 +                                                              
+      197 +**Libraries:** —                                              
+      198 +                                                              
+      199 +### phase-02-auth/TD-04                                       
+      200 +                                                              
+      201 +**Recommendation:** Random Opaque Tokens in DB — Revocability 
+          + is important; the DB table is trivial to implement.          
+      202 +                                                              
+      203 +**Libraries:** —                                              
+      204 +                                                              
+      205 +### phase-02-auth/TD-05                                       
+      206 +                                                              
+      207 +**Recommendation:** @nestjs-modules/mailer — Best NestJS      
+          +integration, SMTP-based, works with Mailpit for local dev.    
+      208 +                                                              
+      209 +**Libraries:** `@nestjs-modules/mailer@^2.x`,                 
+          +`handlebars@^4.x`                                             
+      210 +                                                              
+      211 +### phase-02-auth/TD-06                                       
+      212 +                                                              
+      213 +**Recommendation:** class-validator + class-transformer —     
+          +Documented NestJS approach, decorator-based, aligns with      
+          +TypeORM entities.                                             
+      214 +                                                              
+      215 +**Libraries:** `class-validator@^0.14.x`,                     
+          +`class-transformer@^0.5.x`                                    
+      216 +                                                              
+      217 +### phase-02-auth/TD-07                                       
+      218 +                                                              
+      219 +**Recommendation:** Custom Domain Exception Filter —          
+          +Machine-readable error codes, `{ statusCode, error, message   
+          +}` format with domain codes.                                  
+      220 +                                                              
+      221 +**Libraries:** —                                              
+      222 +                                                              
+      223 +### phase-02-auth/TD-08                                       
+      224 +                                                              
+      225 +**Recommendation:** @nestjs/throttler — Native NestJS guard   
+          +integration, module-level `APP_GUARD`, in-memory storage      
+          +sufficient.                                                   
+      226 +                                                              
+      227 +**Libraries:** `@nestjs/throttler@^6.x`                       
+      228 +                                                              
+      229 +### phase-02-auth/TD-09                                       
+      230 +                                                              
+      231 +**Recommendation:** JWT for refresh tokens (diverged from     
+          +opaque recommendation) — reuses access-token                  
+          +signing/verification infrastructure.                          
+      232 +                                                              
+      233 +**Libraries:** `@nestjs/jwt@^11.0.0`                          
+      234 +                                                              
+      235 +### phase-02-auth/TD-10                                       
+      236 +                                                              
+      237 +**Recommendation:** `[a-z0-9_]` + `user_<random>` fallback —  
+          +strict allowlist, no extra dependencies, `user_<random>`      
+          +fallback for extreme prefixes.                                
+      238 +                                                              
+      239 +**Libraries:** —                                              
+      240 +                                                              
+      241 +### openapi-docs-nestjs/TD-01                                 
+      242 +                                                              
+      243 +**Recommendation:** @nestjs/swagger — official NestJS         
+          +integration, decorator-based, generates OpenAPI 3.x spec from 
+          + code. CLI plugin with `classValidatorShim: true` leverages   
+          +existing `class-validator` decorators. Phase 03 endpoints     
+          +must use `@ApiTags()`, `@ApiOperation()`, `@ApiResponse()`,   
+          +and DTO decorators for video resources.                       
+      244 +                                                              
+      245 +**Libraries:** `@nestjs/swagger@^11.x`                        
+      246 +                                                              
+      247 +**Revisions:**                                                
+      248 +- 2026-05-12 — CLI plugin (`classValidatorShim: true`) covers 
+          + only DTO schema inference; documentation of operations,      
+          +typed status-code responses, error contracts (aligned to      
+          +phase-02-auth/TD-07 envelope), and examples requires explicit 
+          + decorators (`@ApiOperation`, `@ApiResponse`, `@ApiBody`,     
+          +`@ApiParam`, `@ApiQuery`, `@ApiExtraModels`).                 
+      249 +                                                              
+      250 +### openapi-docs-nestjs/TD-02                                 
+      251 +                                                              
+      252 +**Recommendation:** Runtime UI + exported openapi.json —      
+          +Swagger UI served at `/api/docs` (dev/staging),               
+          +`openapi.json` exported as a build artifact for downstream    
+          +consumers (frontend codegen).                                 
+      253 +                                                              
+      254 +**Libraries:** —                                              
+      255 +                                                              
+      256 +### openapi-docs-nestjs/TD-03                                 
+      257 +                                                              
+      258 +**Recommendation:** Dev/staging only — Swagger UI and spec    
+          +endpoint disabled in production via environment flag.         
+      259 +                                                              
+      260 +**Libraries:** —                                              
+      261 +                                                              
+      262 +## Inherited Conventions                                      
+      263 +                                                              
+      264 +- Backend config uses `@nestjs/config` with namespaced        
+          +`registerAs(name, () => ({...}))` factories — one file per    
+          +domain in `src/config/`. Phase 03 adds                        
+          +`src/config/storage.config.ts` and                            
+          +`src/config/queue.config.ts`. _(from phase 01)_               
+      265 +- Env variables are validated by a Joi schema in              
+          +`src/config/env.validation.ts`, passed to                     
+          +`ConfigModule.forRoot({ validationSchema, validationOptions:  
+          +{ allowUnknown: true, abortEarly: false } })`. Phase 03 adds  
+          +storage (S3 endpoint, bucket, credentials) and Redis (host,   
+          +port) env vars to the schema. _(from phase 01)_               
+      266 +- Config is injected into modules via `ConfigType<typeof      
+          +xxxConfig>` and `@Inject(xxxConfig.KEY)`; the same factory is 
+          + importable as a plain function for non-DI contexts. _(from   
+          +phase 01)_                                                    
+      267 +- `data-source.ts` loads `.env` via `import 'dotenv/config'`  
+          +at the top, then imports `databaseConfig` and calls it as a   
+          +plain function. _(from phase 01)_                             
+      268 +- Database connection parameters sourced from a single        
+          +`databaseConfig` factory — never duplicated. _(from phase     
+          +01)_                                                          
+      269 +- `TypeOrmModule.forRootAsync` with `imports:                 
+          +[ConfigModule]`, `inject: [databaseConfig.KEY]`, `useFactory` 
+          + returning options including `autoLoadEntities: true`,        
+          +`synchronize: false`. _(from phase 01)_                       
+      270 +- Auth uses custom guards with `@nestjs/jwt` (no              
+          +@nestjs/passport). Phase 03 upload endpoints require          
+          +authentication (user must be logged in to upload); use the    
+          +existing JWT guard. _(from phase 02)_                         
+      271 +- Domain exceptions mapped to HTTP responses by a custom      
+          +exception filter. Phase 03 introduces new domain exceptions   
+          +(e.g., `VideoNotFound`, `UploadNotCompleted`,                 
+          +`ProcessingFailed`). _(from phase 02)_                        
+      272 +- Request validation via `class-validator` +                  
+          +`class-transformer` with `ValidationPipe`. Phase 03 DTOs for  
+          +upload initiation follow the same pattern. _(from phase 02)_  
+      273 +- Rate limiting via `@nestjs/throttler`. Upload endpoints may 
+          + need custom throttle configuration. _(from phase 02)_        
+      274 +- All endpoints documented with `@nestjs/swagger` decorators  
+          +(`@ApiTags()`, `@ApiOperation()`, `@ApiResponse()`). Phase 03 
+          + video endpoints must follow this convention. _(from          
+          +openapi-docs-nestjs)_                                         
+      275 +                                                              
+      276 +## Inherited Deferred Capabilities                            
+      277 +                                                              
+      278 +| Capability | Source phase | Status | Rationale |            
+      279 +|------------|-------------|--------|-----------|             
+      280 +| Telas de frontend | phase-01-configuracao-base | deferred | 
+          + `next-frontend/` is not initialized in this phase; UI        
+          +surfaces start in a later phase. |                            
+      281 +| Telas de cadastro, login, confirmação de conta e            
+          +recuperação de senha | phase-02-auth | deferred |             
+          +`next-frontend/` was not initialized in phase 02; UI surfaces 
+          + start in a later phase. |                                    
+      282 +| Confirmação de conta via e-mail com link de ativação (FE    
+          +landing screen) | phase-02-auth-frontend | deferred | UI      
+          +landing screen de-scoped; FE confirmation flow picked up by a 
+          + future phase. BE side unchanged. |                           
+      283 +| Logout (UI button in authenticated chrome) |                
+          +phase-02-auth-frontend | deferred | Logout button lives       
+          +inside authenticated chrome (typically Phase 04). POST        
+          +`/api/auth/logout` BFF route handler + `session.destroy()`    
+          +contract is ready. |                                          
+      284 +| Recuperação de senha (destination screen /                  
+          +set-new-password) | phase-02-auth-frontend | deferred |       
+          +`/forgot-password` ships sending the e-mail; reset-password   
+          +destination screen absent; link destination remains 404 until 
+          + a later phase delivers the screen. |                         
+      285 +                                                              
+      286 +## Non-UI / Deferred Capabilities                             
+      287 +                                                              
+      288 +| Capability | Status | Rationale | TD refs |                 
+      289 +|------------|--------|-----------|---------|                 
+      290 +| Frontend video interface (upload UI, player, progress) |    
+          +deferred | Phase 03 is explicitly a backend-only deliverable  
+          +per `objetivo_desafio.md`. Frontend video interface deferred  
+          +to future phases. | — |                                       
+      291 +| Video title, description, category editing | deferred |     
+          +Phase 04 scope — Gerenciamento de Vídeos e Canal. | — |       
+      292 +| Video visibility (público/unlisted) | deferred | Phase 04   
+          +scope. | — |                                                  
+      293 +| Custom thumbnail upload | deferred | Phase 04 scope —       
+          +thumbnail editing is part of video management. | — |          
+      294 +| Draft → publication workflow | deferred | Phase 04 scope —  
+          +full publication flow. Phase 03 only creates drafts and       
+          +transitions to ready/failed. | — |                            
+      295 +                                                              
+      296 +## Testing Requirements                                       
+      297 +                                                              
+      298 +Refer to the `testing-guide-nestjs-project` Skill for layer   
+          +requirements per artifact type in `nestjs-project/`.          
+      299 +                                                              
+      300 +Phase 03 introduces several new artifact categories with      
+          +specific testing considerations:                              
+      301 +                                                              
+      302 +**New artifact types and their test layers:**                 
+      303 +                                                              
+      304 +| Artifact | Test layer | Notes |                             
+      305 +|----------|------------|-------|                             
+      306 +| Video entity (`video.entity.ts`) | Integration (real DB) |  
+          +Constraints, defaults, `select: false` fields, unique index   
+          +on short ID, status enum column |                             
+      307 +| VideosService (upload orchestration, status transitions) |  
+          +Unit (branch logic, mock repos) + Integration (DB contract) | 
+          + Service has branching: multipart initiation, completion      
+          +validation, status transitions |                              
+      308 +| StorageService (S3/MinIO client wrapper) | Integration      
+          +(real MinIO) | Test against MinIO container in compose;       
+          +presigned URL generation, multipart orchestration |           
+      309 +| VideosController | E2E only | Upload initiation, upload     
+          +completion, streaming URL, video detail endpoints |           
+      310 +| Video DTOs | E2E (validation wiring) | One test per         
+          +endpoint proving `ValidationPipe` rejects bad input |         
+      311 +| VideosModule | Unit (compilation) | DI wiring with          
+          +`BullModule.registerQueue()`, `TypeOrmModule.forFeature()`,   
+          +storage config |                                              
+      312 +| Queue producer (enqueue job on upload complete) |           
+          +Integration (real Redis) | Assert job enqueued with correct   
+          +data via `queue.getJobs(['waiting'])` |                       
+      313 +| Queue processor (`@Processor`, worker) | Unit (mock deps) + 
+          + Integration (real DB/storage) | Test `process()` method      
+          +directly; assert DB status update and thumbnail upload |      
+      314 +| Config files (`storage.config.ts`, `queue.config.ts`) |     
+          +Unit (module compilation) | Module fails to compile with      
+          +missing env vars |                                            
+      315 +                                                              
+      316 +**External system strategies for Phase 03:**                  
+      317 +                                                              
+      318 +| System | Strategy | Service in compose |                    
+      319 +|--------|----------|--------------------|                    
+      320 +| PostgreSQL | Real (Docker) — same as prior phases | `db` |  
+      321 +| Object Storage (MinIO) | Real (Docker) — MinIO container    
+          +added in Phase 03 | `minio` |                                 
+      322 +| Message Queue (Redis) | Real (Docker) — Redis container     
+          +added in Phase 03 | `redis` |                                 
+      323 +| Email (Mailpit) | Real SMTP capture — same as prior phases  
+          +| `mailpit` |                                                 
+      324 +                                                              
+      325 +**Queue testing pattern (BullMQ + Redis):**                   
+      326 +- Use `BullModule.forRoot({ connection: { host:               
+          +process.env.REDIS_HOST ?? 'redis', port:                      
+          +Number(process.env.REDIS_PORT ?? 6379) } })` in test modules  
+          +— the fallback is the Compose service name, never `localhost` 
+          + (root `CLAUDE.md` → Docker Networking)                       
+      327 +- Assert job enqueued: `queue.getJobs(['waiting'])` returns   
+          +expected job data                                             
+      328 +- Test processor's `process()` method directly — do not test  
+          +BullMQ's dispatch mechanism                                   
+      329 +- Clean queues between tests: `queue.obliterate({ force: true 
+          + })` or `queue.drain()`                                       
+      330 +                                                              
+      331 +**Storage testing pattern (MinIO):**                          
+      332 +- MinIO runs as a Docker service with S3-compatible API       
+      333 +- Integration tests use real MinIO — no filesystem fallback   
+          +in tests                                                      
+      334 +- Test presigned URL generation: assert URL is valid and      
+          +accessible                                                    
+      335 +- Test multipart flow: `CreateMultipartUpload` → `UploadPart` 
+          + → `CompleteMultipartUpload`                                  
+      336 +- Clean test objects in `afterAll`                            
+      337 +                                                              
+      338 +**Worker testing pattern (FFmpeg via child_process):**        
+      339 +- Unit tests: mock `child_process.spawn` to return controlled 
+          + stdout/stderr                                                
+      340 +- Integration tests: use a small test video fixture (few      
+          +seconds, <1MB) to run real `ffprobe`/`ffmpeg`                 
+      341 +- Assert: duration extracted correctly, thumbnail JPEG        
+          +created and uploaded to storage, video status updated to      
+          +`ready`                                                       
+      342 +- Assert failure path: invalid video → status updated to      
+          +`failed`                                                      
+      343 +- Tests run inside the `nestjs-api` container                 
+          +(`nestjs-project/CLAUDE.md` → Commands), so integration tests 
+          + that execute real `ffprobe`/`ffmpeg` require the FFmpeg      
+          +binaries in that container's image as well as in the          
+          +`video-worker` image                                          
+      344 +                                                              
+      345 +**End-to-end flow (acceptance evidence):**                    
+      346 +- `objetivo_desafio.md` requires queue, worker and storage to 
+          + be exercised by tests against the real Compose               
+          +infrastructure ("Fila, worker e storage precisam subir no     
+          +Compose e ser exercitados pelos testes") and lists "Streaming 
+          + funcionando (sem exigir download completo) e download do     
+          +vídeo disponível" as an acceptance criterion                  
+      347 +- At least one `*.e2e-spec.ts` covers the full cycle:         
+          +initiate upload (draft) → upload parts to MinIO via presigned 
+          + URLs → complete upload (processing) → poll until the worker  
+          +sets `ready` → request the streaming URL with a `Range`       
+          +header and assert `206 Partial Content` → request the         
+          +download URL and assert an attachment response                
+
+● context.md regenerated. Key changes from the previous version:
+
+  1. Updated sources_mtime — decisions doc mtime updated to 2026-11-13T12:26:58 
+  (was 2026-11-12T23:51:16); added phase-02-auth-frontend/context.md and testing
+   guide skill file as sources.
+  2. Updated ## Decisions Detail — all 9 TDs now include the full recommendation
+   prose with Revisions blocks from the decisions doc (TD-02, TD-04, TD-05,
+  TD-07, TD-08, TD-09 all have revisions that were missing from the previous
+  context.md).
+  3. Updated ## Decisions Index — topic names aligned with the
+  decisions-reader's more descriptive headings (e.g., "Video Status Lifecycle
+  and Failure Handling" instead of just "Video Status Lifecycle").
+  4. Expanded ## Inherited Deferred Capabilities — now includes 5 entries (was
+  1) from phase-01, phase-02-auth, and phase-02-auth-frontend.
+  5. Removed ## Correlated Ad-Hoc Decisions section — not part of the canonical
+  template. The user-confirmed openapi-docs-nestjs TDs are properly represented
+  in ## Inherited Decisions Detail (with the revision block for TD-01).
+  6. Updated ## Inherited Decisions Detail — openapi-docs-nestjs/TD-01 now
+  includes its revision block.
+
+  The existing validation.md is now stale (its sources_mtime for context.md 
+  points to the old mtime). Next step is /plan-validate 03 to regenerate it 
+  against the updated context.
+
+✻ Churned for 8m 53s
+
+● Agent "Extract phase 03 scope" completed
+
+● context.md has been regenerated. The previous validation.md is now stale.
+  Ready for /plan-validate 03 to revalidate against the updated context.
+
+● Agent "Build decisions index phase 03" completed
+
+● Acknowledged — the decisions-reader agent notification confirms the output I
+  already consumed. The context.md regeneration is complete.
+
+  To summarize the state: context.md has been fully regenerated with updated TD
+  revisions, expanded inherited deferred capabilities, and corrected
+  sources_mtime. The existing validation.md is now stale. Run /plan-validate 03 
+  to revalidate.
+
+● Agent "Correlate ad-hoc decisions" completed
+
+● Acknowledged — correlator agent notification confirms the output already
+  consumed. All subagent work is complete and context.md has been written. Ready
+   for /plan-validate 03.
+
+● Agent "Extract TD details phase 03" completed
+
+● Acknowledged — decisions-detail-reader notification confirms output already
+  consumed and incorporated into the regenerated context.md. All subagent work
+  is complete. Ready for /plan-validate 03.
+
+● Agent "Extract prior phases inheritance" completed
+
+● Acknowledged — phases-reader notification confirms the output already consumed
+   and incorporated into the regenerated context.md. All 5 subagent tasks are
+  now complete. context.md is written. Ready for /plan-validate 03.

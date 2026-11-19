@@ -43,6 +43,27 @@ describe('ChannelsService (integration)', () => {
     );
   }
 
+  describe('findByUserId', () => {
+    it('returns the channel for a user who has one', async () => {
+      const user = await createUser();
+      await channelsService.createChannel(user.id, 'lookup@example.com');
+
+      const found = await channelsService.findByUserId(user.id);
+
+      expect(found).not.toBeNull();
+      expect(found!.user_id).toBe(user.id);
+      expect(found!.nickname).toBe('lookup');
+    });
+
+    it('returns null for a user with no channel', async () => {
+      const user = await createUser();
+
+      const found = await channelsService.findByUserId(user.id);
+
+      expect(found).toBeNull();
+    });
+  });
+
   describe('createChannel', () => {
     it('persists a channel derived from email', async () => {
       const user = await createUser();
