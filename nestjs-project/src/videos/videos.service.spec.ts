@@ -25,7 +25,7 @@ function makeChannel(overrides: Partial<Channel> = {}): Channel {
     user_id: 'user-1',
     created_at: new Date(),
     updated_at: new Date(),
-    user: {} as any,
+    user: {} as Channel['user'],
     ...overrides,
   } as Channel;
 }
@@ -47,7 +47,7 @@ function makeVideo(overrides: Partial<Video> = {}): Video {
     error_message: null,
     created_at: new Date(),
     updated_at: new Date(),
-    channel: {} as any,
+    channel: {} as Channel,
     ...overrides,
   } as Video;
 }
@@ -105,10 +105,9 @@ describe('VideosService', () => {
       channelsService.findByUserId.mockResolvedValue(makeChannel());
       storageService.createMultipartUpload.mockResolvedValue('upload-id');
       storageService.presignUploadParts.mockResolvedValue(['url-1', 'url-2']);
-      videoRepository.save.mockImplementation(async (v) => ({
-        ...makeVideo(),
-        ...(v as any),
-      }));
+      videoRepository.save.mockImplementation((v: Partial<Video>) =>
+        Promise.resolve({ ...makeVideo(), ...v }),
+      );
 
       const result = await service.initiateUpload('user-1', {
         file_name: 'my-video.mp4',
@@ -172,10 +171,9 @@ describe('VideosService', () => {
 
       videoRepository.save
         .mockRejectedValueOnce(uniqueViolation)
-        .mockImplementation(async (v) => ({
-          ...makeVideo(),
-          ...(v as any),
-        }));
+        .mockImplementation((v: Partial<Video>) =>
+          Promise.resolve({ ...makeVideo(), ...v }),
+        );
 
       const result = await service.initiateUpload('user-1', {
         file_name: 'tiny.mp4',
@@ -251,7 +249,7 @@ describe('VideosService', () => {
       videoRepository.findOneBy.mockResolvedValue(video);
       storageService.completeMultipartUpload.mockResolvedValue(undefined);
       storageService.getObjectSize.mockResolvedValue(209_715_200);
-      videoRepository.save.mockImplementation(async (v) => v as Video);
+      videoRepository.save.mockImplementation((v: Video) => Promise.resolve(v));
       videoQueue.add.mockResolvedValue({} as any);
 
       const result = await service.completeUpload('user-1', 'video-1', [
@@ -333,7 +331,7 @@ describe('VideosService', () => {
       videoRepository.findOneBy.mockResolvedValue(video);
       storageService.completeMultipartUpload.mockResolvedValue(undefined);
       storageService.getObjectSize.mockResolvedValue(209_715_200);
-      videoRepository.save.mockImplementation(async (v) => v as Video);
+      videoRepository.save.mockImplementation((v: Video) => Promise.resolve(v));
       videoQueue.add.mockRejectedValue(new Error('Redis down'));
 
       await expect(

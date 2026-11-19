@@ -119,7 +119,6 @@ describe('VideosService (integration)', () => {
     it('aborts multipart upload if video insert fails', async () => {
       const abortSpy = jest.spyOn(storageService, 'abortMultipartUpload');
       const videoRepo = dataSource.getRepository(Video);
-      const originalSave = videoRepo.save.bind(videoRepo);
 
       // Make save throw after the first call in the retry loop
       jest.spyOn(videoRepo, 'save').mockRejectedValue(new Error('DB boom'));
@@ -168,10 +167,9 @@ describe('VideosService (integration)', () => {
       // Verify the job was enqueued
       const job = await videoQueue.getJob(result.id);
       expect(job).not.toBeNull();
-      expect(job!.data).toEqual({
-        video_id: result.id,
-        storage_key: expect.stringContaining('videos/'),
-      });
+      const jobData = job!.data as { video_id: string; storage_key: string };
+      expect(jobData.video_id).toBe(result.id);
+      expect(jobData.storage_key).toMatch(/^videos\//);
 
       // Clean up: delete the object from storage
       const videoRepo = dataSource.getRepository(Video);
