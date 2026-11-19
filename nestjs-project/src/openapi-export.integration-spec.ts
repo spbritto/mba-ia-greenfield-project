@@ -128,4 +128,51 @@ describe('exportSpec (integration)', () => {
       }
     }
   });
+
+  it('includes all /videos paths', () => {
+    const paths = document.paths as Record<string, unknown>;
+    const expectedPaths = [
+      '/videos',
+      '/videos/{videoId}/upload/part-urls',
+      '/videos/{videoId}/upload/complete',
+      '/videos/{videoId}/upload',
+      '/videos/{publicId}',
+      '/videos/{publicId}/stream',
+      '/videos/{publicId}/download',
+    ];
+
+    for (const p of expectedPaths) {
+      expect(paths).toHaveProperty(p);
+    }
+  });
+
+  it('video upload endpoint requires access-token security', () => {
+    const paths = document.paths as Record<
+      string,
+      Record<string, Record<string, unknown>>
+    >;
+    const operation = paths['/videos']?.['post'];
+    expect(operation).toBeDefined();
+    const security = operation?.security as Array<Record<string, unknown>>;
+    expect(security).toBeDefined();
+    expect(security.some((req) => 'access-token' in req)).toBe(true);
+  });
+
+  it('video metadata endpoint does not require security (optional auth)', () => {
+    const paths = document.paths as Record<
+      string,
+      Record<string, Record<string, unknown>>
+    >;
+    const operation = paths['/videos/{publicId}']?.['get'];
+    expect(operation).toBeDefined();
+    const security = operation?.security as
+      | Array<Record<string, unknown>>
+      | undefined;
+    // Optional auth endpoints either have no security or have an empty security entry
+    const isOptional =
+      !security ||
+      security.length === 0 ||
+      security.some((s) => Object.keys(s).length === 0);
+    expect(isOptional).toBe(true);
+  });
 });

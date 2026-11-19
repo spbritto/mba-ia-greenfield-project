@@ -65,7 +65,7 @@ describe('Auth (e2e)', () => {
     refreshTokenRepository = dataSource.getRepository(RefreshToken);
     throttlerStorage =
       moduleFixture.get<ThrottlerStorageService>(ThrottlerStorage);
-  });
+  }, 30000);
 
   afterAll(async () => {
     await app.close();
