@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 6/9 completed
+**SIs:** 7/9 completed
 
 ### SI-03.1 — Dependências, infraestrutura (Redis, MinIO) e configuração
 - **Status:** completed
@@ -43,9 +43,14 @@
   - E2E tests seed a "ready" video directly via repository + `StorageService.putObject` to avoid enqueuing a processing job.
 
 ### SI-03.7 — Worker de processamento (FFmpeg) e serviço `video-worker`
-- **Status:** pending
-- **Tests:**
+- **Status:** completed
+- **Tests:** ffmpeg.service.integration-spec (7: probe duration/codecs/dimensions/format/invalid-file, extractFrame jpeg-bytes/invalid-file), video.processor.spec (8 unit: success ready+thumbnailTime-short+thumbnailTime-null, skip not-found+not-processing+draft, failure intermediate+final), video.processor.integration-spec (1: fixture→ready with duration/metadata/thumbnail), worker.module.spec (1: compilation)
 - **Observations:**
+  - `FfmpegService` uses raw `spawn` of `ffprobe`/`ffmpeg` (no `fluent-ffmpeg`); typed `FfprobeOutput` interface avoids `any` from `JSON.parse`.
+  - `VideoProcessor` extends `WorkerHost`; idempotent — skips if video not found or not `processing`; final-attempt detection uses `job.attemptsMade >= (job.opts.attempts ?? 1) - 1`.
+  - `WorkerModule` standalone context (no HTTP): requires `Video`, `Channel`, and `User` entities in `forFeature` due to relation chain `Video → Channel → User`.
+  - `worker.ts` signal handler uses `void app.close().then(…)` to satisfy `no-misused-promises` lint rule.
+  - Test fixture `test/fixtures/sample.mp4` generated with `ffmpeg -f lavfi` (2s, 320×240, H.264+AAC, ~60KB).
 
 ### SI-03.8 — E2E do ciclo completo com o worker
 - **Status:** pending

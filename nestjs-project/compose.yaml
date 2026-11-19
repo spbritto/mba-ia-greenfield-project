@@ -76,6 +76,23 @@ services:
     environment:
       S3_BUCKET: ${S3_BUCKET:-streamtube-videos}
 
+  video-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: npm run start:worker:dev
+    volumes:
+      - .:/home/node/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
   mailpit:
     image: axllent/mailpit
     ports:
