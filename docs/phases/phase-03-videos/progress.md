@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
-**Status:** in_progress
-**SIs:** 8/9 completed
+**Status:** completed
+**SIs:** 9/9 completed
 
 ### SI-03.1 — Dependências, infraestrutura (Redis, MinIO) e configuração
 - **Status:** completed
@@ -62,6 +62,10 @@
   - Jest per-test timeouts set to 90s (success) and 150s (failure) to accommodate worker processing + retries.
 
 ### SI-03.9 — Documentação e contrato OpenAPI
-- **Status:** pending
-- **Tests:**
+- **Status:** completed
+- **Tests:** openapi-export.integration-spec (12: existing 9 + new 3: includes /videos paths, upload requires access-token, metadata optional-auth)
 - **Observations:**
+  - Root CLAUDE.md: updated Message Queue from TBD to BullMQ + Redis; added Videos Module section with upload flow, key files, and all 7 endpoints.
+  - nestjs-project/CLAUDE.md: added `video-worker` to services list; added Video Worker section with entry point, command, env vars, and E2E test notes.
+  - software-arch.mermaid: updated Message Queue technology from "TBD" to "BullMQ / Redis".
+  - openapi.json regenerated; all 7 /videos paths present.

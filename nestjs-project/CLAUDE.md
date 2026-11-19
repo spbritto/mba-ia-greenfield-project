@@ -15,6 +15,7 @@ Then verify each infrastructure service is actually ready to accept connections 
 - **PostgreSQL:** `docker compose exec db pg_isready -U streamtube` — expect `accepting connections`
 - **Redis:** `docker compose exec redis redis-cli ping` — expect `PONG`
 - **MinIO:** `docker compose exec minio mc ready local` — expect `The cluster is ready`
+- **Video worker:** `docker compose logs video-worker | grep "Video worker started"` — expect one line (boot takes ~2 minutes; see "Video Worker" below)
 
 Only start the NestJS dev server (`npm run start:dev`) when the user **explicitly** asks to run the application — never as part of "start the environment".
 
@@ -39,6 +40,7 @@ Services:
 - `redis` — Redis 7 (Alpine), port `6379` — BullMQ job queue backing store
 - `minio` — MinIO (Chainguard), ports `9000` (API) / `9001` (console) — S3-compatible object storage
 - `minio-init` — one-shot init container that creates the default bucket
+- `video-worker` — FFmpeg video processing worker (BullMQ consumer); no exposed port — processes jobs from the `video-processing` queue
 - `mailpit` — SMTP catch-all, ports `1025` (SMTP) / `8025` (web UI)
 
 All verification and teardown commands run on the **host machine**:
@@ -161,6 +163,29 @@ NestJS with standard module structure. Source lives in `src/`, compiled output i
 - **Decorators:** `emitDecoratorMetadata` + `experimentalDecorators` enabled — required for NestJS DI
 - **Prettier:** single quotes, trailing commas everywhere
 - **ESLint:** `no-explicit-any` allowed; `no-floating-promises` and `no-unsafe-argument` are warnings
+
+## Video Worker
+
+The `video-worker` service is a standalone NestJS application (separate entry point `src/worker.ts`, DI graph in `src/worker/worker.module.ts`) that consumes BullMQ jobs from the `video-processing` queue. It is infrastructure — it starts with `docker compose up -d` alongside all other services.
+
+- **Entry point:** `src/worker.ts` (`createApplicationContext`, no HTTP listener)
+- **Command:** `npm run start:worker:dev` (`ts-node`, **no watch / no hot reload**)
+- **Dependencies:** waits for `db` and `redis` to be healthy and for `minio-init` to complete
+- **Readiness:** boot takes ~2 minutes (ts-node compile). Ready only when the log shows `Video worker started, consuming video-processing queue`:
+
+```bash
+docker compose logs video-worker | grep "Video worker started"
+```
+
+**Restart after code changes.** The worker does not reload code. After changing anything it loads (`src/worker.ts`, `src/worker/`, `src/videos/processors/`, `src/videos/ffmpeg/`, `src/storage/`, `src/config/`, entities), run `docker compose restart video-worker` and wait for the readiness log above. Otherwise the container keeps running the old code and e2e results do not reflect the change.
+
+Environment variables used by both `nestjs-api` and `video-worker`:
+- `REDIS_HOST`, `REDIS_PORT` — BullMQ connection
+- `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_PRESIGNED_GET_TTL_SECONDS` — MinIO/S3 storage
+- `S3_PUBLIC_ENDPOINT` — host used to sign URLs handed to the browser (`http://localhost:9000` in `.env.example`). This is the one intentional `localhost`: the URL is resolved by the client on the host machine, not inside a container. Server-side code always uses `S3_ENDPOINT` (`http://minio:9000`).
+
+Tests that exercise the worker (E2E cycle with real FFmpeg processing):
+- `test/videos-processing.e2e-spec.ts` — requires `video-worker` to be running; polls until video reaches `ready` or `failed` status
 
 ## REST Conventions
 

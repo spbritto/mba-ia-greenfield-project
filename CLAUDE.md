@@ -23,8 +23,33 @@ See `docs/diagrams/software-arch.mermaid` for the full diagram. Key containers:
 - **Video Worker** (FFmpeg) → consumes jobs from queue, processes videos, updates DB and storage
 - **Database** (PostgreSQL) → users, channels, videos, comments, likes
 - **Object Storage** (S3/MinIO) → video files and thumbnails
-- **Message Queue** (TBD) → video processing job queue
+- **Message Queue** (BullMQ + Redis) → video processing job queue
 - **Email Service** (SMTP) → account confirmation and password recovery
+
+## Videos Module
+
+Upload, processing, and delivery of video content. Key flow:
+
+1. **Upload** — authenticated user calls `POST /videos` to initiate a presigned multipart upload to MinIO. The API returns presigned URLs for each part. After all parts are uploaded directly to MinIO, the client calls `POST /videos/:videoId/upload/complete` to finalize.
+2. **Processing** — on completion, the API enqueues a BullMQ job (`video-processing` queue). The `video-worker` service (FFmpeg) picks up the job, extracts duration/codec metadata, generates a thumbnail, and sets the video status to `ready`.
+3. **Delivery** — `GET /videos/:publicId` returns metadata; `GET /videos/:publicId/stream` and `/download` redirect to presigned MinIO URLs.
+
+Key files:
+- `nestjs-project/src/videos/` — `VideosModule`, `VideosService`, `VideosController`, `Video` entity, DTOs, domain exceptions
+- `nestjs-project/src/videos/processors/video.processor.ts` — `VideoProcessor` (BullMQ consumer, runs only in the worker)
+- `nestjs-project/src/videos/ffmpeg/ffmpeg.service.ts` — `FfmpegService` (ffprobe/ffmpeg via `child_process.spawn`)
+- `nestjs-project/src/storage/` — `StorageModule`, `StorageService` (S3/MinIO client)
+- `nestjs-project/src/worker/worker.module.ts` — `WorkerModule` (worker's standalone DI graph)
+- `nestjs-project/src/worker.ts` — standalone worker entry point
+
+Endpoints:
+- `POST /videos` — initiate multipart upload (auth required)
+- `POST /videos/:videoId/upload/part-urls` — refresh presigned part URLs (auth required)
+- `POST /videos/:videoId/upload/complete` — complete upload (auth required)
+- `DELETE /videos/:videoId/upload` — abort upload (auth required)
+- `GET /videos/:publicId` — video metadata (public, optional auth)
+- `GET /videos/:publicId/stream` — 302 redirect to presigned stream URL (public, optional auth)
+- `GET /videos/:publicId/download` — 302 redirect to presigned download URL (public, optional auth)
 
 ## Docker Networking
 
